@@ -8,11 +8,16 @@ The project was created in Windows using Visual Studio 2013. You can open the so
 
 ## Getting it to run on Linux
 
-It can be built on Linux using autoconf. Go to the *EvoNetflowCollector* subdirectory and execute the following commands (The default installation directory is /opt/evonetflowcollector. It can be changed with ./configure --prefix=/<otherdir>):
+It can be built on Linux using autoconf. Go to the *EvoNetflowCollector* subdirectory and execute the following commands.
 
 ```
 autoreconf -vif
 ./configure
 make
 make install
+```
+
+The default installation directory is /opt/evonetflowcollector. It can be changed with:
+```
+./configure --prefix=/<otherdir>
 ```
