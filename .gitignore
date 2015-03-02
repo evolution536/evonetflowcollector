@@ -1,0 +1,8 @@
+EvoNetflowCollector/.deps/*
+Release/*
+Debug/*
+*.opensdf
+*.sdf
+*.user
+EvoNetflowCollector/Debug/*
+EvoNetflowCollector/Release/*
