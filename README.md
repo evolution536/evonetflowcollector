@@ -17,7 +17,7 @@ make
 make install
 ```
 
-The default installation directory is /opt/evonetflowcollector. It can be changed with:
+The default installation directory is */opt/evonetflowcollector*. It can be changed with:
 ```
 ./configure --prefix=/<otherdir>
 ```
