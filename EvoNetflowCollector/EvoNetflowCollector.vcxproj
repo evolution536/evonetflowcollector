@@ -77,12 +77,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="EvoNetflow.h" />
+    <ClInclude Include="EvoNetflow9TemplateCache.h" />
     <ClInclude Include="EvoNetflowCollector.h" />
     <ClInclude Include="EvoProcessingDispatcher.h" />
     <ClInclude Include="NetflowLogger.h" />
     <ClInclude Include="UtilityFunctions.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="EvoNetflow9TemplateCache.cpp" />
     <ClCompile Include="EvoNetflowCollector.cpp" />
     <ClCompile Include="EvoNetflowCollectorMain.cpp" />
     <ClCompile Include="EvoProcessingDispatcher.cpp" />
