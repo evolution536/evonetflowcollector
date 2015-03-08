@@ -17,6 +17,34 @@
 
 #include "EvoNetflow9TemplateCache.h"
 #include <algorithm>
+#include <sstream>
+
+// Parses fields from a data flowset using the template.
+void NETFLOW9_TEMPLATE_CACHE_ENTRY::ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, unsigned short fieldCount, std::vector<EvoNetflow9FieldValueSet>& outRecords)
+{
+	const char* packetIterator = (char*)&pDataHeader->FieldCollection[0];
+	for (unsigned int i = 0; i < fieldCount; ++i)
+	{
+		for (unsigned int b = 0; b < this->FieldList.size(); ++b)
+		{
+			if (this->FieldList[b].FieldType == *(unsigned short*)packetIterator)
+			{
+				packetIterator += sizeof(unsigned short);
+				EvoNetflow9FieldValueSet entry;
+				entry.Field = this->FieldList[b].FieldType;
+				std::stringstream stream;
+				if (ProcessNetflow9FieldValue(this->FieldList[b].FieldType, this->FieldList[b].FieldLength, packetIterator, stream))
+				{
+					entry.Value = stream.str();
+					outRecords.push_back(entry);
+				}
+				packetIterator += this->FieldList[b].FieldLength;
+			}
+		}
+	}
+}
+
+// ----------------------------------------------------------------------------------------------------
 
 EvoNetflow9TemplateCache::EvoNetflow9TemplateCache()
 {
@@ -31,8 +59,30 @@ EvoNetflow9TemplateCache::~EvoNetflow9TemplateCache()
 // Checks for the existence of a template with specified parameters.
 const PNETFLOW9_TEMPLATE_CACHE_ENTRY EvoNetflow9TemplateCache::FindTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID) const
 {
-	auto retval = std::find(this->mTemplateCache.begin(), this->mTemplateCache.end(), NETFLOW9_TEMPLATE_CACHE_ENTRY(srcIp, sourceID, TemplateID));
-	return retval == this->mTemplateCache.end() ? NULL : retval._Ptr;
+	const NETFLOW9_TEMPLATE_CACHE_ENTRY compare(srcIp, sourceID, TemplateID);
+	for (unsigned int i = 0; i < this->mTemplateCache.size(); ++i)
+	{
+		if (this->mTemplateCache[i] == compare)
+		{
+			return (this->mTemplateCache.begin() + i)._Ptr;
+		}
+	}
+
+	return NULL;
+}
+
+// Checks for the existence of a template using a predefined template ID (passed as flowset ID inside a data flowset).
+const PNETFLOW9_TEMPLATE_CACHE_ENTRY EvoNetflow9TemplateCache::FindTemplate(const unsigned short TemplateID) const
+{
+	for (unsigned int i = 0; i < this->mTemplateCache.size(); ++i)
+	{
+		if (this->mTemplateCache[i].TemplateID == TemplateID)
+		{
+			return (this->mTemplateCache.begin() + i)._Ptr;
+		}
+	}
+
+	return NULL;
 }
 
 // Adds a new template entry to the cache if it does not already exist.

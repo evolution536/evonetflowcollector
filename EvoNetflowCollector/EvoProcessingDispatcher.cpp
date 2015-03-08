@@ -43,10 +43,10 @@ void EvoProcessingDispatcher::QueuePacket(char* const pPacket)
 void EvoProcessingDispatcher::ProcessPacket(char* const pPacket)
 {
 	const int netflowVersion = CheckNetflowPacketVersion(pPacket);
-	std::vector<unsigned int> sequenceNumbers;
 	if (netflowVersion == 5)
 	{
 		std::vector<NETFLOW5_FLOW_RECORD> flows;
+		std::vector<unsigned int> sequenceNumbers;
 		ParseNetflow5Packet(pPacket, sequenceNumbers, flows);
 
 		for (unsigned int i = 0; i < flows.size(); ++i)
@@ -56,13 +56,10 @@ void EvoProcessingDispatcher::ProcessPacket(char* const pPacket)
 	}
 	else if (netflowVersion == 9)
 	{
-		std::vector<PNETFLOW9_DATA_FLOWSET_HEADER> flows;
+		std::vector<EvoNetflow9FieldValueSet> flows;
+		std::vector<unsigned int> sequenceNumbers;
 		ParseNetflow9Packet(pPacket, sequenceNumbers, flows);
-
-		/*for (unsigned int i = 0; i < flows.size(); ++i)
-		{
-			this->FlowReceived9(sequenceNumbers[i], &flows[i]);
-		}*/
+		this->FlowReceived9(pPacket);
 	}
 
 	delete[] pPacket;

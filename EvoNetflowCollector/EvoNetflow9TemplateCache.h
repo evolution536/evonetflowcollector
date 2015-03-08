@@ -20,6 +20,7 @@
 
 #include <vector>
 #include "EvoNetflow.h"
+#include "EvoNetflowCollector.h"
 
 union UNIVERSAL_IPADDRESS
 {
@@ -48,6 +49,8 @@ typedef struct _NETFLOW9_TEMPLATE_CACHE_ENTRY
 		this->SourceID = sourceID;
 		this->TemplateID = TemplateID;
 	};
+
+	void ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, unsigned short fieldCount, std::vector<EvoNetflow9FieldValueSet>& outRecords);
 } NETFLOW9_TEMPLATE_CACHE_ENTRY, *PNETFLOW9_TEMPLATE_CACHE_ENTRY;
 
 // Comparison function for template cache entries.
@@ -77,6 +80,8 @@ public:
 	}
 
 	const PNETFLOW9_TEMPLATE_CACHE_ENTRY FindTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID) const;
+	const PNETFLOW9_TEMPLATE_CACHE_ENTRY FindTemplate(const unsigned short TemplateID) const;
+
 	const bool AddTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID, const std::vector<NETFLOW9_TEMPLATE_FIELD>& fields);
 	const bool RemoveTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID);
 };

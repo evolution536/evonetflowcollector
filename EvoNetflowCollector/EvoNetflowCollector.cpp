@@ -19,6 +19,7 @@
 #include "UtilityFunctions.h"
 #include "EvoProcessingDispatcher.h"
 #include "EvoNetflow9TemplateCache.h"
+#include <sstream>
 
 #ifdef _WIN32
 	#include <Mstcpip.h>
@@ -81,13 +82,13 @@ const bool EvoNetflowCollector::BeginListen()
 		return false;
 	}
 
-	// Start listening for Netflow input on a separate thread.
-	this->mRunning = true;
-	this->mSocketThread = std::thread(&EvoNetflowCollector::ListenerThread, this);
-
 	// Set a timeout on the socket so that it does not block execution infinitely.
 	unsigned long timeout = 25;
 	setsockopt(this->ListenSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(unsigned long));
+
+	// Start listening for Netflow input on a separate thread.
+	this->mRunning = true;
+	this->mSocketThread = std::thread(&EvoNetflowCollector::ListenerThread, this);
 
 	return true;
 }
@@ -126,7 +127,16 @@ void EvoNetflowCollector::ListenerThread()
 
 const int CheckNetflowPacketVersion(const char* buffer)
 {
-	return buffer ? (int)*(unsigned short*)buffer : 0;
+	if (buffer)
+	{
+#ifdef _WIN32
+		return (int)SwapBytes((unsigned short*)buffer);
+#else
+		return (int)*(unsigned short*)buffer;
+#endif
+	}
+
+	return 0;
 }
 
 const bool ParseNetflow5Packet(const char* buffer, std::vector<unsigned int>& outSequences, std::vector<NETFLOW5_FLOW_RECORD>& outRecords)
@@ -181,7 +191,7 @@ const bool ParseNetflow5Packet(const char* buffer, std::vector<unsigned int>& ou
 	return true;
 }
 
-const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigned int fieldLength, const char* fieldVal, std::string& outVal)
+const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigned int fieldLength, const char* fieldVal, std::stringstream& outVal)
 {
 	switch (fieldType)
 	{
@@ -192,76 +202,72 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case FLOWS:
 			break;
 		case PROTOCOL:
-			break;
 		case SRC_TOS:
-			break;
 		case TCP_FLAGS:
-			break;
-		case L4_SRC_PORT:
-			break;
-		case IPV4_SRC_ADDR:
-			break;
 		case SRC_MASK:
-			break;
+		case DST_MASK:
+		case IPV6_SRC_MASK:
+		case IPV6_DST_MASK:
+		case MUL_IGMP_TYPE:
+		case SAMPLING_ALGORITHM:
+		case ENGINE_TYPE:
+		case ENGINE_ID:
+		case MPLS_TOP_LABEL_TYPE:
+		case FLOW_SAMPLER_ID:
+		case FLOW_SAMPLER_MODE:
+		case MIN_TTL:
+		case MAX_TTL:
+		case DST_TOS:
+		case IP_PROTOCOL_VERSION:
+			outVal << (int)*fieldVal;
+			return true;
+		case L4_SRC_PORT:
+		case L4_DST_PORT:
+		case MIN_PKT_LENGTH:
+		case MAX_PKT_LENGTH:
+		case ICMP_TYPE:
+		case FLOW_ACTIVE_TIMEOUT:
+		case FLOW_INACTIVE_TIMEOUT:
+		case IPV4_IDENT:
+		case SRC_VLAN:
+		case DST_VLAN:
+			outVal << *(unsigned short*)fieldVal;
+			return true;
+		case IPV4_SRC_ADDR:
+		case IPV4_DST_ADDR:
+		case IPV4_NEXT_HOP:
+		case BGP_IPV4_NEXT_HOP:
+		case LAST_SWITCHED:
+		case FIRST_SWITCHED:
+		case SAMPLING_INTERVAL:
+		case IPV4_SRC_PREFIX:
+		case IPV4_DST_PREFIX:
+		case MPLS_TOP_LABEL_IP_ADDR:
+		case FLOW_SAMPLER_RANDOM_INTERVAL:
+		case IPV6_OPTION_HEADERS:
+			outVal << *(unsigned long*)fieldVal;
+			return true;
 		case INPUT_SNMP:
 			break;
-		case L4_DST_PORT:
-			break;
-		case IPV4_DST_ADDR:
-			break;
-		case DST_MASK:
-			break;
 		case OUTPUT_SNMP:
-			break;
-		case IPV4_NEXT_HOP:
 			break;
 		case SRC_AS:
 			break;
 		case DST_AS:
 			break;
-		case BGP_IPV4_NEXT_HOP:
-			break;
 		case MUL_DST_PKTS:
 			break;
 		case MUL_DST_BYTES:
-			break;
-		case LAST_SWITCHED:
-			break;
-		case FIRST_SWITCHED:
 			break;
 		case OUT_BYTES:
 			break;
 		case OUT_PKTS:
 			break;
-		case MIN_PKT_LENGTH:
-			break;
-		case MAX_PKT_LENGTH:
-			break;
 		case IPV6_SRC_ADDR:
 			break;
 		case IPV6_DST_ADDR:
 			break;
-		case IPV6_SRC_MASK:
-			break;
-		case IPV6_DST_MASK:
-			break;
 		case IPV6_FLOW_LABEL:
-			break;
-		case ICMP_TYPE:
-			break;
-		case MUL_IGMP_TYPE:
-			break;
-		case SAMPLING_INTERVAL:
-			break;
-		case SAMPLING_ALGORITHM:
-			break;
-		case FLOW_ACTIVE_TIMEOUT:
-			break;
-		case FLOW_INACTIVE_TIMEOUT:
-			break;
-		case ENGINE_TYPE:
-			break;
-		case ENGINE_ID:
 			break;
 		case TOTAL_BYTES_EXP:
 			break;
@@ -271,47 +277,17 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 			break;
 		case VENDOR_PROPRIETARY_1:
 			return false;
-		case IPV4_SRC_PREFIX:
-			break;
-		case IPV4_DST_PREFIX:
-			break;
-		case MPLS_TOP_LABEL_TYPE:
-			break;
-		case MPLS_TOP_LABEL_IP_ADDR:
-			break;
-		case FLOW_SAMPLER_ID:
-			break;
-		case FLOW_SAMPLER_MODE:
-			break;
-		case FLOW_SAMPLER_RANDOM_INTERVAL:
-			break;
 		case VENDOR_PROPRIETARY_2:
 			return false;
-		case MIN_TTL:
-			break;
-		case MAX_TTL:
-			break;
-		case IPV4_IDENT:
-			break;
-		case DST_TOS:
-			break;
 		case IN_SRC_MAC:
 			break;
 		case OUT_DST_MAC:
-			break;
-		case SRC_VLAN:
-			break;
-		case DST_VLAN:
-			break;
-		case IP_PROTOCOL_VERSION:
 			break;
 		case DIRECTION:
 			break;
 		case IPV6_NEXT_HOP:
 			break;
 		case BPG_IPV6_NEXT_HOP:
-			break;
-		case IPV6_OPTION_HEADERS:
 			break;
 		case VENDOR_PROPRIETARY_3:
 		case VENDOR_PROPRIETARY_4:
@@ -357,11 +333,9 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		default:
 			return false;
 	}
-
-	return true;
 }
 
-const bool ParseNetflow9Packet(const char* buffer, std::vector<unsigned int>& outSequences, std::vector<PNETFLOW9_DATA_FLOWSET_HEADER>& outRecords)
+const bool ParseNetflow9Packet(const char* buffer, std::vector<unsigned int>& outSequences, std::vector<EvoNetflow9FieldValueSet>& outRecords)
 {
 	if (!buffer)
 	{
@@ -378,15 +352,23 @@ const bool ParseNetflow9Packet(const char* buffer, std::vector<unsigned int>& ou
 	const char* packetIterator = buffer + sizeof(NETFLOW9_HEADER);
 	for (int i = 0; i < flowCount; ++i)
 	{
+		outSequences.push_back(seq + i);
 		const PNETFLOW9_FLOWSET_HEADER currentFlow = (PNETFLOW9_FLOWSET_HEADER)packetIterator;
-		if (currentFlow->FlowsetID < 256)
+#ifdef _WIN32
+		const unsigned short flowsetId = SwapBytes(&currentFlow->FlowsetID);
+		const unsigned short flowsetLength = SwapBytes(&currentFlow->Length);
+#else
+		const unsigned short flowsetId = currentFlow->FlowsetID;
+		const unsigned short flowsetLength = currentFlow->Length;
+#endif
+		if (flowsetId < 256)
 		{
-			if (currentFlow->FlowsetID == 0)
+			if (flowsetId == 0)
 			{
 				// The flowset is a template flowset that describes fields.
 				const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = (PNETFLOW9_TEMPLATE_FLOWSET_HEADER)(packetIterator + sizeof(NETFLOW9_FLOWSET_HEADER));
 			}
-			else if (currentFlow->FlowsetID == 1)
+			else if (flowsetId == 1)
 			{
 				// The flowset is a template flowset that describes options.
 				const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = (PNETFLOW9_OPTIONS_TEMPLATE_HEADER)(packetIterator + sizeof(NETFLOW9_FLOWSET_HEADER));
@@ -396,11 +378,17 @@ const bool ParseNetflow9Packet(const char* buffer, std::vector<unsigned int>& ou
 		{
 			// The flowset is a data flowset.
 			const PNETFLOW9_DATA_FLOWSET_HEADER dataHeader = (PNETFLOW9_DATA_FLOWSET_HEADER)(packetIterator + sizeof(NETFLOW9_FLOWSET_HEADER));
-			// FIND TEMPLATE IN CACHE AND SEE IF THE TEMPLATE IDS MATCH! IF SO, PARSE PACKET USING TEMPLATE!
+			const PNETFLOW9_TEMPLATE_CACHE_ENTRY foundTemplate = v9TemplateCacheInstance->FindTemplate(flowsetId);
+
+			// If a matching template was found, we should parse the data inside the flow that came in.
+			if (foundTemplate)
+			{
+				foundTemplate->ParseFieldsUsingTemplate(dataHeader, flowsetLength, outRecords);
+			}
 		}
 
 		// Add the variable length value of the processed flowset to the iterator.
-		packetIterator += currentFlow->Length;
+		packetIterator += flowsetLength;
 	}
 #else
 

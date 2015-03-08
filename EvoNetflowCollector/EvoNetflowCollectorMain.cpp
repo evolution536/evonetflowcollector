@@ -249,6 +249,11 @@ void FlowReceivedCallback(const unsigned int SequenceCounter, PNETFLOW5_FLOW_REC
 	mProcessedEventsQueue.push_back(next.str());
 }
 
+void FlowReceivedCallback9(const char* packetData)
+{
+
+}
+
 int main(int argc, char* argv[])
 {
 	// Parse the command line arguments.
@@ -330,6 +335,7 @@ int main(int argc, char* argv[])
 	// Start the dispatcher as well to asynchronously process Netflow input.
 	std::cout << "Listening for Netflow input on port " << portArg << "..." << std::endl;
 	eventDispatcher.FlowReceived5 = FlowReceivedCallback;
+	eventDispatcher.FlowReceived9 = FlowReceivedCallback9;
 	eventDispatcher.StartDispatcher();
 	main.BeginListen();
 
@@ -338,6 +344,9 @@ int main(int argc, char* argv[])
 	{
 		while (mProcessedEventsQueue.size() > 0)
 		{
+			// Increment the amount of flows that are collected.
+			++totalFlows;
+
 			// Process the next event in the queue.
 			const std::string& str = mProcessedEventsQueue.front();
 			std::cout << str << std::endl;
@@ -349,9 +358,6 @@ int main(int argc, char* argv[])
 			}
 			
 			mProcessedEventsQueue.pop_front();
-
-			// Increment the amount of flows that are collected.
-			++totalFlows;
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));

@@ -49,9 +49,16 @@ public:
 	void StopListening();
 };
 
+// Represents a field/value set from a Netflow v9 input.
+struct EvoNetflow9FieldValueSet
+{
+	unsigned short Field;
+	std::string Value;
+};
+
 const int CheckNetflowPacketVersion(const char* buffer);
 const bool ParseNetflow5Packet(const char* buffer, std::vector<unsigned int>& outSequences, std::vector<NETFLOW5_FLOW_RECORD>& outRecords);
-const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigned int fieldLength, const char* fieldVal, std::string& outVal);
-const bool ParseNetflow9Packet(const char* buffer, std::vector<unsigned int>& outSequences, std::vector<PNETFLOW9_DATA_FLOWSET_HEADER>& outRecords);
+const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigned int fieldLength, const char* fieldVal, std::stringstream& outVal);
+const bool ParseNetflow9Packet(const char* buffer, std::vector<unsigned int>& outSequences, std::vector<EvoNetflow9FieldValueSet>& outRecords);
 
 #endif
