@@ -40,7 +40,8 @@ public:
 	void StartDispatcher();
 	void StopDispatcher();
 
-	std::function<void(const unsigned int, const PNETFLOW5_FLOW_RECORD)> FlowReceived;
+	std::function<void(const unsigned int, const PNETFLOW5_FLOW_RECORD)> FlowReceived5;
+	//std::function<void(const unsigned int, const std::vector<Netflow9FlowFieldSet>*)> FlowReceived9;
 };
 
 #endif

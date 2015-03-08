@@ -40,7 +40,9 @@ const bool EvoNetflow9TemplateCache::AddTemplate(const UNIVERSAL_IPADDRESS* srcI
 {
 	if (!this->FindTemplate(srcIp, sourceID, TemplateID))
 	{
-		this->mTemplateCache.push_back(NETFLOW9_TEMPLATE_CACHE_ENTRY(srcIp, sourceID, TemplateID));
+		NETFLOW9_TEMPLATE_CACHE_ENTRY entry(srcIp, sourceID, TemplateID);
+		entry.FieldList = fields;
+		this->mTemplateCache.push_back(entry);
 		return true;
 	}
 

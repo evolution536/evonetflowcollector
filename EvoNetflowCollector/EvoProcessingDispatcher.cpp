@@ -51,7 +51,7 @@ void EvoProcessingDispatcher::ProcessPacket(char* const pPacket)
 
 		for (unsigned int i = 0; i < flows.size(); ++i)
 		{
-			this->FlowReceived(sequenceNumbers[i], &flows[i]);
+			this->FlowReceived5(sequenceNumbers[i], &flows[i]);
 		}
 	}
 	else if (netflowVersion == 9)
@@ -61,7 +61,7 @@ void EvoProcessingDispatcher::ProcessPacket(char* const pPacket)
 
 		/*for (unsigned int i = 0; i < flows.size(); ++i)
 		{
-			this->FlowReceived(sequenceNumbers[i], &flows[i]);
+			this->FlowReceived9(sequenceNumbers[i], &flows[i]);
 		}*/
 	}
 

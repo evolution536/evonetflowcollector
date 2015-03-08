@@ -27,9 +27,11 @@
 #include "EvoNetflowCollector.h"
 #include "EvoProcessingDispatcher.h"
 #include "NetflowLogger.h"
+#include "EvoNetflow9TemplateCache.h"
 
 extern EvoProcessingDispatcher eventDispatcher;
 NetflowLogger* netflowLoggerInstance = NULL;
+extern EvoNetflow9TemplateCache* v9TemplateCacheInstance;
 
 #define EVO_NETFLOW_COLLECTOR_VERSION 1.0
 
@@ -322,9 +324,12 @@ int main(int argc, char* argv[])
 		std::cout << "Failed to bind a socket to port " << portArg << " for Netflow packet listening!" << std::endl;
 	}
 
+	// Initialize the template cache class for Netflow v9 input.
+	v9TemplateCacheInstance = EvoNetflow9TemplateCache::GetInstance();
+
 	// Start the dispatcher as well to asynchronously process Netflow input.
 	std::cout << "Listening for Netflow input on port " << portArg << "..." << std::endl;
-	eventDispatcher.FlowReceived = FlowReceivedCallback;
+	eventDispatcher.FlowReceived5 = FlowReceivedCallback;
 	eventDispatcher.StartDispatcher();
 	main.BeginListen();
 

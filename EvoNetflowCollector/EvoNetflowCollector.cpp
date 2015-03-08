@@ -18,6 +18,7 @@
 #include "EvoNetflowCollector.h"
 #include "UtilityFunctions.h"
 #include "EvoProcessingDispatcher.h"
+#include "EvoNetflow9TemplateCache.h"
 
 #ifdef _WIN32
 	#include <Mstcpip.h>
@@ -31,6 +32,7 @@
 #endif
 
 EvoProcessingDispatcher eventDispatcher;
+EvoNetflow9TemplateCache* v9TemplateCacheInstance = NULL;
 
 EvoNetflowCollector::EvoNetflowCollector()
 {
@@ -394,6 +396,7 @@ const bool ParseNetflow9Packet(const char* buffer, std::vector<unsigned int>& ou
 		{
 			// The flowset is a data flowset.
 			const PNETFLOW9_DATA_FLOWSET_HEADER dataHeader = (PNETFLOW9_DATA_FLOWSET_HEADER)(packetIterator + sizeof(NETFLOW9_FLOWSET_HEADER));
+			// FIND TEMPLATE IN CACHE AND SEE IF THE TEMPLATE IDS MATCH! IF SO, PARSE PACKET USING TEMPLATE!
 		}
 
 		// Add the variable length value of the processed flowset to the iterator.

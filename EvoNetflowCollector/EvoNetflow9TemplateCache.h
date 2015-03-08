@@ -38,6 +38,7 @@ typedef struct _NETFLOW9_TEMPLATE_CACHE_ENTRY
 	UNIVERSAL_IPADDRESS SourceIpAddress;
 	unsigned long SourceID;
 	unsigned short TemplateID;
+	std::vector<NETFLOW9_TEMPLATE_FIELD> FieldList;
 
 	friend const bool operator ==(const _NETFLOW9_TEMPLATE_CACHE_ENTRY& first, const _NETFLOW9_TEMPLATE_CACHE_ENTRY& other);
 
@@ -61,9 +62,19 @@ class EvoNetflow9TemplateCache
 {
 private:
 	std::vector<NETFLOW9_TEMPLATE_CACHE_ENTRY> mTemplateCache;
-public:
+	
+	// Singleton code: private constructor, destructor and copy constructors.
 	EvoNetflow9TemplateCache();
 	~EvoNetflow9TemplateCache();
+
+	EvoNetflow9TemplateCache(EvoNetflow9TemplateCache const&);
+	void operator=(EvoNetflow9TemplateCache const&);
+public:
+	static EvoNetflow9TemplateCache* GetInstance()
+	{
+		static EvoNetflow9TemplateCache instance;
+		return &instance;
+	}
 
 	const PNETFLOW9_TEMPLATE_CACHE_ENTRY FindTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID) const;
 	const bool AddTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID, const std::vector<NETFLOW9_TEMPLATE_FIELD>& fields);
