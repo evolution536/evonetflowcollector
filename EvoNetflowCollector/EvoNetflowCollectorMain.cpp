@@ -236,7 +236,7 @@ void SignalHandler(int signal)
 	exit(signal);
 }
 
-void FlowReceivedCallback(const unsigned int SequenceCounter, PNETFLOW5_FLOW_RECORD const record)
+void FlowReceivedCallback5(const unsigned int SequenceCounter, PNETFLOW5_FLOW_RECORD const record)
 {
 	// Create output string for the processed packet.
 	std::stringstream next;
@@ -334,7 +334,7 @@ int main(int argc, char* argv[])
 
 	// Start the dispatcher as well to asynchronously process Netflow input.
 	std::cout << "Listening for Netflow input on port " << portArg << "..." << std::endl;
-	eventDispatcher.FlowReceived5 = FlowReceivedCallback;
+	eventDispatcher.FlowReceived5 = FlowReceivedCallback5;
 	eventDispatcher.FlowReceived9 = FlowReceivedCallback9;
 	eventDispatcher.StartDispatcher();
 	main.BeginListen();

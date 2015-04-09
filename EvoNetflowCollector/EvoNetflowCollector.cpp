@@ -367,6 +367,23 @@ const bool ParseNetflow9Packet(const char* buffer, std::vector<unsigned int>& ou
 			{
 				// The flowset is a template flowset that describes fields.
 				const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = (PNETFLOW9_TEMPLATE_FLOWSET_HEADER)(packetIterator + sizeof(NETFLOW9_FLOWSET_HEADER));
+				const PNETFLOW9_TEMPLATE_FIELD firstFieldEntry = (PNETFLOW9_TEMPLATE_FIELD)((BYTE*)templateHeader + sizeof(NETFLOW9_TEMPLATE_FLOWSET_HEADER));
+#ifdef _WIN32
+				const unsigned int fieldCount = SwapBytes(&templateHeader->FieldCount);
+#else
+				const unsigned int fieldCount = templateHeader->FieldCount;
+#endif
+				// Walk the fields in the template and add them to the template cache.
+				std::vector<NETFLOW9_TEMPLATE_FIELD> fields;
+				for (unsigned int i = 0; i < fieldCount; ++i)
+				{
+					fields.push_back(*(firstFieldEntry + i));
+				}
+#ifdef _WIN32
+				v9TemplateCacheInstance->AddTemplate(NULL, SwapBytes(&nfHeader->SourceID), SwapBytes(&templateHeader->TemplateID), fields);
+#else
+				v9TemplateCacheInstance->AddTemplate(NULL, nfHeader->SourceID, templateHeader->TemplateID, fields);
+#endif
 			}
 			else if (flowsetId == 1)
 			{

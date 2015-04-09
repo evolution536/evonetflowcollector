@@ -191,8 +191,6 @@ typedef struct _NETFLOW9_TEMPLATE_FLOWSET_HEADER
 {
 	unsigned short TemplateID;
 	unsigned short FieldCount;
-	unsigned short FieldType;
-	unsigned short FieldLength;
 } NETFLOW9_TEMPLATE_FLOWSET_HEADER, *PNETFLOW9_TEMPLATE_FLOWSET_HEADER;
 
 // Netflow v9 data flowset header.
