@@ -22,12 +22,6 @@
 #include "EvoNetflow.h"
 #include "EvoNetflowCollector.h"
 
-union UNIVERSAL_IPADDRESS
-{
-	IPV4ADDRESS IpAddress4;
-	IPV6ADDRESS IpAddress6;
-};
-
 typedef struct _NETFLOW9_TEMPLATE_FIELD
 {
 	unsigned short FieldType;
@@ -50,7 +44,7 @@ typedef struct _NETFLOW9_TEMPLATE_CACHE_ENTRY
 		this->TemplateID = TemplateID;
 	};
 
-	void ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, unsigned short fieldCount, std::vector<EvoNetflow9FieldValueSet>& outRecords);
+	const unsigned int ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, std::vector<EvoNetflow9FieldValueSet>& outRecords);
 } NETFLOW9_TEMPLATE_CACHE_ENTRY, *PNETFLOW9_TEMPLATE_CACHE_ENTRY;
 
 // Comparison function for template cache entries.

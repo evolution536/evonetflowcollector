@@ -33,8 +33,6 @@ extern EvoProcessingDispatcher eventDispatcher;
 NetflowLogger* netflowLoggerInstance = NULL;
 extern EvoNetflow9TemplateCache* v9TemplateCacheInstance;
 
-#define EVO_NETFLOW_COLLECTOR_VERSION 1.0
-
 unsigned int totalFlows = 0;
 unsigned long long totalBytes = 0;
 bool helpArg = false;
@@ -192,7 +190,7 @@ const char* const ProtocolStringArray[] =
 	"ROHC"
 };
 
-// ----------------------------------------------------------------------------------------
+// ----------------------------------------------------------------------------------------------------
 
 // Converts a long IPv4 address to its string representation.
 std::string Ipv4ToString(const IPV4ADDRESS ipv4)
@@ -205,6 +203,124 @@ std::string Ipv4ToString(const IPV4ADDRESS ipv4)
 	std::stringstream outstream;
 	outstream << (int)bytes[0] << "." << (int)bytes[1] << "." << (int)bytes[2] << "." << (int)bytes[3];
 	return outstream.str();
+}
+
+std::string MacAddressToString(const unsigned char addr[6])
+{
+	std::stringstream stream;
+	stream << addr[0] << ":" << addr[1] << ":" << addr[2] << ":" << addr[3] << ":" << addr[4] << ":" << addr[5];
+	return stream.str();
+}
+
+const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigned int fieldLength, const char* fieldVal, std::stringstream& outVal)
+{
+	switch (fieldType)
+	{
+		case IN_BYTES:
+		case IN_PKTS:
+		case FLOWS:
+		case LAST_SWITCHED:
+		case FIRST_SWITCHED:
+		case SAMPLING_INTERVAL:
+		case MPLS_TOP_LABEL_IP_ADDR:
+		case FLOW_SAMPLER_RANDOM_INTERVAL:
+		case IPV6_OPTION_HEADERS:
+		case MUL_DST_PKTS:
+		case MUL_DST_BYTES:
+		case OUT_BYTES:
+		case OUT_PKTS:
+		case TOTAL_BYTES_EXP:
+		case TOTAL_PKTS_EXP:
+		case TOTAL_FLOWS_EXP:
+		case IN_PERMANENT_BYTES:
+		case IN_PERMANENT_PKTS:
+			outVal << *(unsigned long*)fieldVal;
+			return true;
+		case PROTOCOL:
+			outVal << ProtocolStringArray[fieldType];
+			return true;
+		case SRC_TOS:
+		case TCP_FLAGS:
+		case SRC_MASK:
+		case DST_MASK:
+		case IPV6_SRC_MASK:
+		case IPV6_DST_MASK:
+		case MUL_IGMP_TYPE:
+		case SAMPLING_ALGORITHM:
+		case ENGINE_TYPE:
+		case ENGINE_ID:
+		case MPLS_TOP_LABEL_TYPE:
+		case FLOW_SAMPLER_ID:
+		case FLOW_SAMPLER_MODE:
+		case MIN_TTL:
+		case MAX_TTL:
+		case DST_TOS:
+		case IP_PROTOCOL_VERSION:
+		case DIRECTION:
+			outVal << (int)*fieldVal;
+			return true;
+		case L4_SRC_PORT:
+		case L4_DST_PORT:
+		case MIN_PKT_LENGTH:
+		case MAX_PKT_LENGTH:
+		case ICMP_TYPE:
+		case FLOW_ACTIVE_TIMEOUT:
+		case FLOW_INACTIVE_TIMEOUT:
+		case IPV4_IDENT:
+		case SRC_VLAN:
+		case DST_VLAN:
+		case INPUT_SNMP:
+		case OUTPUT_SNMP:
+		case SRC_AS:
+		case DST_AS:
+			outVal << *(unsigned short*)fieldVal;
+			return true;
+		case IPV4_SRC_ADDR:
+		case IPV4_DST_ADDR:
+		case IPV4_NEXT_HOP:
+		case BGP_IPV4_NEXT_HOP:
+		case IPV4_SRC_PREFIX:
+		case IPV4_DST_PREFIX:
+			outVal << Ipv4ToString(*(IPV4ADDRESS*)fieldVal);
+			return true;
+		case IPV6_SRC_ADDR:
+		case IPV6_DST_ADDR:
+		case IPV6_FLOW_LABEL: // 3 bytes long!
+		case IPV6_NEXT_HOP:
+		case BPG_IPV6_NEXT_HOP:
+			return false; // do eet
+		case IN_SRC_MAC:
+		case OUT_DST_MAC:
+		case IN_DST_MAC:
+		case OUT_SRC_MAC:
+			outVal << MacAddressToString((unsigned char*)fieldVal);
+			return true;
+		case IF_NAME:
+		case IF_DESC:
+		case SAMPLER_NAME:
+			outVal << std::string(fieldVal, fieldLength);
+			return true;
+		case VENDOR_PROPRIETARY_1:
+		case VENDOR_PROPRIETARY_2:
+		case VENDOR_PROPRIETARY_3:
+		case VENDOR_PROPRIETARY_4:
+		case VENDOR_PROPRIETARY_5:
+		case VENDOR_PROPRIETARY_6:
+		case VENDOR_PROPRIETARY_7:
+		case VENDOR_PROPRIETARY_8:
+		case MPLS_LABEL_1:
+		case MPLS_LABEL_2:
+		case MPLS_LABEL_3:
+		case MPLS_LABEL_4:
+		case MPLS_LABEL_5:
+		case MPLS_LABEL_6:
+		case MPLS_LABEL_7:
+		case MPLS_LABEL_8:
+		case MPLS_LABEL_9:
+		case MPLS_LABEL_10:
+		default:
+			return false;
+	}
 }
 
 // Finalizes the program before shutting it down.
@@ -242,22 +358,54 @@ void FlowReceivedCallback5(const unsigned int SequenceCounter, PNETFLOW5_FLOW_RE
 	std::stringstream next;
 	next << "FLOW " << SequenceCounter << ": " << Ipv4ToString(record->SourceIpAddress) << ":" << record->SourcePort << " <> "
 		<< Ipv4ToString(record->DestinationIpAddress) << ":" << record->DestinationPort << " Bytes: " << record->BytesCount
-		<< " Packets: " << record->PacketCount << " Protocol: "	<< ProtocolStringArray[record->Protocol];
+		<< " Packets: " << record->PacketCount << " Protocol: " << ProtocolStringArray[record->Protocol];
 
 	// Push the event to the queue for processing in UI thread.
 	totalBytes += record->BytesCount;
 	mProcessedEventsQueue.push_back(next.str());
 }
 
-void FlowReceivedCallback9(const char* packetData)
+std::string GetNetflow9FieldResult(const std::vector<EvoNetflow9FieldValueSet>& outRecords, const unsigned short fieldnum)
 {
+	for (auto& fieldset : outRecords)
+	{
+		if (fieldset.Field == fieldnum)
+		{
+			return fieldset.Value;
+		}
+	}
 
+	return "";
+}
+
+void FlowReceivedCallback9(const unsigned int SequenceCounter, const std::vector<EvoNetflow9FieldValueSet>& outRecords)
+{
+	std::stringstream next;
+	next << "FLOW " << 1337 << ": " << GetNetflow9FieldResult(outRecords, IPV4_SRC_ADDR) << ":" << GetNetflow9FieldResult(outRecords, L4_SRC_PORT) << " <> "
+		<< GetNetflow9FieldResult(outRecords, IPV4_DST_ADDR) << ":" << GetNetflow9FieldResult(outRecords, L4_DST_PORT) << " Bytes: " << GetNetflow9FieldResult(outRecords, IN_BYTES)
+		<< " Packets: " << GetNetflow9FieldResult(outRecords, IN_PKTS) << " Protocol: " << GetNetflow9FieldResult(outRecords, PROTOCOL);
+
+	// Push the event to the queue for processing in UI thread.
+	std::istringstream converter(GetNetflow9FieldResult(outRecords, IN_BYTES));
+	unsigned long tempValue;
+	converter >> tempValue;
+	totalBytes += tempValue;
+	mProcessedEventsQueue.push_back(next.str());
+}
+
+void EvoGetMajorMinorVersion(WORD* const pMajor, WORD* const pMinor)
+{
+	*pMajor = 1;
+	*pMinor = 0;
 }
 
 int main(int argc, char* argv[])
 {
 	// Parse the command line arguments.
-	std::cout << "Evo Netflow Collector " << EVO_NETFLOW_COLLECTOR_VERSION << " by evolution536" << std::endl;
+	WORD major;
+	WORD minor;
+	EvoGetMajorMinorVersion(&major, &minor);
+	std::cout << "Evo Netflow Collector " << major << "." << minor << " by evolution536" << std::endl;
 	for (int i = 1; i < argc; ++i)
 	{
 		// Check whether the user wants the help menu displayed.

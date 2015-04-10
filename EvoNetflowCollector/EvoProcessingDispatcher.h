@@ -22,26 +22,54 @@
 #include <deque>
 #include <functional>
 #include <mutex>
+#include <vector>
+
+union UNIVERSAL_IPADDRESS
+{
+	IPV4ADDRESS IpAddress4;
+	IPV6ADDRESS IpAddress6;
+};
+
+// Represents a field/value set from a Netflow v9 input.
+struct EvoNetflow9FieldValueSet
+{
+	unsigned short Field;
+	std::string Value;
+};
+
+struct QueuedPacketDescriptor
+{
+	const char* PacketBuffer;
+	unsigned int PacketLength;
+	UNIVERSAL_IPADDRESS GeneratorIpAddress;
+
+	QueuedPacketDescriptor(const char* buffer, const unsigned int length)
+	{
+		this->PacketBuffer = buffer;
+		this->PacketLength = length;
+		this->GeneratorIpAddress = { 0 };
+	};
+};
 
 class EvoProcessingDispatcher
 {
 private:
-	std::deque<char*> mQueuedPackets;
+	std::deque<QueuedPacketDescriptor> mQueuedPackets;
 	bool _running;
 	std::mutex mQueueCs;
 
-	void ProcessPacket(char* const pPacket);
+	void ProcessPacket(QueuedPacketDescriptor* const pPacket);
 	void ProcessingLoop();
 public:
 	EvoProcessingDispatcher();
 	~EvoProcessingDispatcher();
 
-	void QueuePacket(char* const pPacket);
+	void QueuePacket(QueuedPacketDescriptor* const pPacket);
 	void StartDispatcher();
 	void StopDispatcher();
 
 	std::function<void(const unsigned int, const PNETFLOW5_FLOW_RECORD)> FlowReceived5;
-	std::function<void(const char*)> FlowReceived9;
+	std::function<void(const unsigned int, const std::vector<EvoNetflow9FieldValueSet>&)> FlowReceived9;
 };
 
 #endif

@@ -20,28 +20,29 @@
 #include <sstream>
 
 // Parses fields from a data flowset using the template.
-void NETFLOW9_TEMPLATE_CACHE_ENTRY::ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, unsigned short fieldCount, std::vector<EvoNetflow9FieldValueSet>& outRecords)
+const unsigned int NETFLOW9_TEMPLATE_CACHE_ENTRY::ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, std::vector<EvoNetflow9FieldValueSet>& outRecords)
 {
 	const char* packetIterator = (char*)&pDataHeader->FieldCollection[0];
-	for (unsigned int i = 0; i < fieldCount; ++i)
+	unsigned int returnValue = 0;
+	for (unsigned int b = 0; b < this->FieldList.size(); ++b)
 	{
-		for (unsigned int b = 0; b < this->FieldList.size(); ++b)
+		if (this->FieldList[b].FieldType == *(unsigned short*)packetIterator)
 		{
-			if (this->FieldList[b].FieldType == *(unsigned short*)packetIterator)
+			packetIterator += sizeof(unsigned short);
+			EvoNetflow9FieldValueSet entry;
+			entry.Field = this->FieldList[b].FieldType;
+			std::stringstream stream;
+			if (ProcessNetflow9FieldValue(this->FieldList[b].FieldType, this->FieldList[b].FieldLength, packetIterator, stream))
 			{
-				packetIterator += sizeof(unsigned short);
-				EvoNetflow9FieldValueSet entry;
-				entry.Field = this->FieldList[b].FieldType;
-				std::stringstream stream;
-				if (ProcessNetflow9FieldValue(this->FieldList[b].FieldType, this->FieldList[b].FieldLength, packetIterator, stream))
-				{
-					entry.Value = stream.str();
-					outRecords.push_back(entry);
-				}
-				packetIterator += this->FieldList[b].FieldLength;
+				entry.Value = stream.str();
+				outRecords.push_back(entry);
 			}
+			packetIterator += this->FieldList[b].FieldLength;
+			returnValue += this->FieldList[b].FieldLength;
 		}
 	}
+
+	return returnValue;
 }
 
 // ----------------------------------------------------------------------------------------------------

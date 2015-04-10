@@ -28,41 +28,44 @@ EvoProcessingDispatcher::~EvoProcessingDispatcher()
 {
 	while (this->mQueuedPackets.size() > 0)
 	{
-		delete[] this->mQueuedPackets.front();
+		delete[] this->mQueuedPackets.front().PacketBuffer;
 		this->mQueuedPackets.pop_front();
 	}
 }
 
-void EvoProcessingDispatcher::QueuePacket(char* const pPacket)
+void EvoProcessingDispatcher::QueuePacket(QueuedPacketDescriptor* const pPacket)
 {
 	this->mQueueCs.lock();
-	this->mQueuedPackets.push_back(pPacket);
+	this->mQueuedPackets.push_back(*pPacket);
 	this->mQueueCs.unlock();
 }
 
-void EvoProcessingDispatcher::ProcessPacket(char* const pPacket)
+void EvoProcessingDispatcher::ProcessPacket(QueuedPacketDescriptor* const pPacket)
 {
-	const int netflowVersion = CheckNetflowPacketVersion(pPacket);
+	const int netflowVersion = CheckNetflowPacketVersion(pPacket->PacketBuffer);
 	if (netflowVersion == 5)
 	{
 		std::vector<NETFLOW5_FLOW_RECORD> flows;
 		std::vector<unsigned int> sequenceNumbers;
-		ParseNetflow5Packet(pPacket, sequenceNumbers, flows);
-
-		for (unsigned int i = 0; i < flows.size(); ++i)
+		if (ParseNetflow5Packet(pPacket, sequenceNumbers, flows))
 		{
-			this->FlowReceived5(sequenceNumbers[i], &flows[i]);
+			for (unsigned int i = 0; i < flows.size(); ++i)
+			{
+				this->FlowReceived5(sequenceNumbers[i], &flows[i]);
+			}
 		}
 	}
 	else if (netflowVersion == 9)
 	{
-		std::vector<EvoNetflow9FieldValueSet> flows;
-		std::vector<unsigned int> sequenceNumbers;
-		ParseNetflow9Packet(pPacket, sequenceNumbers, flows);
-		this->FlowReceived9(pPacket);
+		std::vector<EvoNetflow9FieldValueSet> fields;
+		unsigned int sequenceNumber;
+		if (ParseNetflow9Packet(pPacket, &sequenceNumber, fields))
+		{
+			this->FlowReceived9(sequenceNumber, fields);
+		}
 	}
 
-	delete[] pPacket;
+	delete[] pPacket->PacketBuffer;
 }
 
 void EvoProcessingDispatcher::StartDispatcher()
@@ -83,7 +86,7 @@ void EvoProcessingDispatcher::ProcessingLoop()
 	{
 		while (this->mQueuedPackets.size() > 0)
 		{
-			this->ProcessPacket(this->mQueuedPackets.front());
+			this->ProcessPacket(&this->mQueuedPackets.front());
 			this->mQueuedPackets.pop_front();
 		}
 
