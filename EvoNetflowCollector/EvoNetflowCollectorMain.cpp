@@ -269,11 +269,20 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case IPV4_IDENT:
 		case SRC_VLAN:
 		case DST_VLAN:
-		case INPUT_SNMP:
-		case OUTPUT_SNMP:
 		case SRC_AS:
 		case DST_AS:
 			outVal << *(unsigned short*)fieldVal;
+			return true;
+		case INPUT_SNMP:
+		case OUTPUT_SNMP:
+			if (fieldLength == sizeof(int))
+			{
+				outVal << *(unsigned long*)fieldVal;
+			}
+			else
+			{
+				outVal << *(unsigned short*)fieldVal;
+			}
 			return true;
 		case IPV4_SRC_ADDR:
 		case IPV4_DST_ADDR:
@@ -475,6 +484,12 @@ int main(int argc, char* argv[])
 	if (!main.Bind(portArg))
 	{
 		std::cout << "Failed to bind a socket to port " << portArg << " for Netflow packet listening!" << std::endl;
+		if (netflowLoggerInstance)
+		{
+			delete netflowLoggerInstance;
+		}
+
+		return 1;
 	}
 
 	// Initialize the template cache class for Netflow v9 input.

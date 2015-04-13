@@ -16,33 +16,36 @@
 */
 
 #include "EvoNetflow9TemplateCache.h"
+#include "UtilityFunctions.h"
 #include <algorithm>
 #include <sstream>
 
 // Parses fields from a data flowset using the template.
-const unsigned int NETFLOW9_TEMPLATE_CACHE_ENTRY::ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, std::vector<EvoNetflow9FieldValueSet>& outRecords)
+void NETFLOW9_TEMPLATE_CACHE_ENTRY::ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, std::vector<EvoNetflow9FieldValueSet>& outRecords)
 {
 	const char* packetIterator = (char*)&pDataHeader->FieldCollection[0];
-	unsigned int returnValue = 0;
-	for (unsigned int b = 0; b < this->FieldList.size(); ++b)
+	const unsigned int fieldCount = this->FieldList.size();
+	for (unsigned int b = 0; b < fieldCount; ++b)
 	{
-		if (this->FieldList[b].FieldType == *(unsigned short*)packetIterator)
+		const PNETFLOW9_TEMPLATE_FIELD currentFieldEntry = this->FieldList.cbegin()._Ptr + b;
+		EvoNetflow9FieldValueSet entry;
+		entry.Field = currentFieldEntry->FieldType;
+		std::stringstream stream;
+#ifdef _WIN32
+		const char* finalvalue = new char[currentFieldEntry->FieldLength];
+#else
+		const char* finalvalue = packetIterator;
+#endif
+		if (ProcessNetflow9FieldValue(currentFieldEntry->FieldType, currentFieldEntry->FieldLength, finalvalue, stream))
 		{
-			packetIterator += sizeof(unsigned short);
-			EvoNetflow9FieldValueSet entry;
-			entry.Field = this->FieldList[b].FieldType;
-			std::stringstream stream;
-			if (ProcessNetflow9FieldValue(this->FieldList[b].FieldType, this->FieldList[b].FieldLength, packetIterator, stream))
-			{
-				entry.Value = stream.str();
-				outRecords.push_back(entry);
-			}
-			packetIterator += this->FieldList[b].FieldLength;
-			returnValue += this->FieldList[b].FieldLength;
+			entry.Value = stream.str();
+			outRecords.push_back(entry);
 		}
+#ifdef _WIN32
+		delete[] finalvalue;
+#endif
+		packetIterator += currentFieldEntry->FieldLength;
 	}
-
-	return returnValue;
 }
 
 // ----------------------------------------------------------------------------------------------------

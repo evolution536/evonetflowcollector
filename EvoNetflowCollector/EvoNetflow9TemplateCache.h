@@ -44,7 +44,7 @@ typedef struct _NETFLOW9_TEMPLATE_CACHE_ENTRY
 		this->TemplateID = TemplateID;
 	};
 
-	const unsigned int ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, std::vector<EvoNetflow9FieldValueSet>& outRecords);
+	void ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, std::vector<EvoNetflow9FieldValueSet>& outRecords);
 } NETFLOW9_TEMPLATE_CACHE_ENTRY, *PNETFLOW9_TEMPLATE_CACHE_ENTRY;
 
 // Comparison function for template cache entries.

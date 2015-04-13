@@ -199,8 +199,8 @@ const bool ParseNetflow5Packet(const QueuedPacketDescriptor* buffer, std::vector
 	return true;
 }
 
-const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, unsigned int* sequenceCounter, std::vector<EvoNetflow9FieldValueSet>& outRecords)
-{
+const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector<unsigned int>& outSequences, std::vector<std::vector<EvoNetflow9FieldValueSet>>& outRecords)
+{)
 	if (!buffer->PacketBuffer)
 	{
 		return false;
@@ -213,79 +213,86 @@ const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, unsigned in
 
 	// Retrieve flows from the packet.
 	const PNETFLOW9_HEADER nfHeader = (PNETFLOW9_HEADER)buffer->PacketBuffer;
-	*sequenceCounter = nfHeader->PackageSequence;
-	const char* packetIterator = buffer->PacketBuffer + sizeof(NETFLOW9_HEADER);
-	const PNETFLOW9_FLOWSET_HEADER flowHeader = (PNETFLOW9_FLOWSET_HEADER)packetIterator;
-
+	const int sequenceCounter = nfHeader->PackageSequence;
 #ifdef _WIN32
 	const unsigned long sourceId = SwapBytes(&nfHeader->SourceID);
 	const unsigned short flowCount = SwapBytes(&nfHeader->FlowCount);
-	const unsigned short flowsetId = SwapBytes(&flowHeader->FlowsetID);
 #else
 	const unsigned long sourceId = nfHeader->SourceID;
 	const unsigned short flowCount = nfHeader->FlowCount;
-	const unsigned short flowsetId = flowHeader->FlowsetID;
 #endif
 
-	if (flowsetId < 256)
+	const char* packetIterator = buffer->PacketBuffer + sizeof(NETFLOW9_HEADER);
+ 	while (packetIterator < buffer->PacketBuffer + buffer->PacketLength)
 	{
-		// Flowset ID of 1 is an options template. Otherwise it is a data template.
-		if (flowsetId == 1)
-		{
-
-		}
-		else
-		{
-			// The packet contains a data template.
-			packetIterator += sizeof(NETFLOW9_FLOWSET_HEADER);
-			const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = (PNETFLOW9_TEMPLATE_FLOWSET_HEADER)packetIterator;
+		PNETFLOW9_FLOWSET_HEADER flowHeader = (PNETFLOW9_FLOWSET_HEADER)packetIterator;
 #ifdef _WIN32
-			const unsigned short templateId = SwapBytes(&templateHeader->TemplateID);
-			const unsigned short fieldCount = SwapBytes(&templateHeader->FieldCount);
+		const unsigned short flowsetId = SwapBytes(&flowHeader->FlowsetID);
+		const unsigned short flowsetLength = SwapBytes(&flowHeader->Length);
 #else
-			const unsigned short templateId = templateHeader->TemplateID;
-			const unsigned short fieldCount = templateHeader->FieldCount;
+		const unsigned short flowsetId = flowHeader->FlowsetID;
+		const unsigned short flowsetLength = flowHeader->Length;
 #endif
-			packetIterator += sizeof(NETFLOW9_TEMPLATE_FLOWSET_HEADER);
-			std::vector<NETFLOW9_TEMPLATE_FIELD> fields;
-			for (unsigned short i = 0; i < fieldCount; ++i)
-			{
-				const PNETFLOW9_TEMPLATE_FIELD curEntry = ((PNETFLOW9_TEMPLATE_FIELD)packetIterator) + i;
-#ifdef _WIN32
-				NETFLOW9_TEMPLATE_FIELD newOne;
-				newOne.FieldType = SwapBytes(&curEntry->FieldType);
-				newOne.FieldLength = SwapBytes(&curEntry->FieldLength);
-				fields.push_back(newOne);
-#else
-				fields.push_back(*curEntry);
-#endif
-				packetIterator += sizeof(NETFLOW9_TEMPLATE_FIELD);
-			}
-
-			// Add the template to the cache. If the template already exists, it will not be added.
-			v9TemplateCacheInstance->AddTemplate(&buffer->GeneratorIpAddress, sourceId, templateId, fields);
-		}
-	}
-	else if (flowsetId >= 256)
-	{
-		// Attempt to retrieve the template that is associated with the data. If no template is found, discard the packet.
-		const PNETFLOW9_TEMPLATE_CACHE_ENTRY foundTemplate = v9TemplateCacheInstance->FindTemplate(flowHeader->FlowsetID);
-		if (!foundTemplate)
-		{
-			return false;
-		}
-
 		packetIterator += sizeof(NETFLOW9_FLOWSET_HEADER);
-
-		// Walk the flows inside the flowset.
-		for (unsigned short i = 0; i < flowCount; ++i)
+		if (flowsetId < 256)
 		{
-			packetIterator += foundTemplate->ParseFieldsUsingTemplate((PNETFLOW9_DATA_FLOWSET_HEADER)packetIterator, outRecords);
+			// Flowset ID of 1 is an options template. Otherwise it is a data template.
+			if (flowsetId == 1)
+			{
+
+			}
+			else
+			{
+				// The packet contains a data template.
+				const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = (PNETFLOW9_TEMPLATE_FLOWSET_HEADER)packetIterator;
+#ifdef _WIN32
+				const unsigned short templateId = SwapBytes(&templateHeader->TemplateID);
+				const unsigned short fieldCount = SwapBytes(&templateHeader->FieldCount);
+#else
+				const unsigned short templateId = templateHeader->TemplateID;
+				const unsigned short fieldCount = templateHeader->FieldCount;
+#endif
+				packetIterator += sizeof(NETFLOW9_TEMPLATE_FLOWSET_HEADER);
+				std::vector<NETFLOW9_TEMPLATE_FIELD> fields;
+				for (unsigned short i = 0; i < fieldCount; ++i)
+				{
+					const PNETFLOW9_TEMPLATE_FIELD curEntry = ((PNETFLOW9_TEMPLATE_FIELD)packetIterator) + i;
+#ifdef _WIN32
+					NETFLOW9_TEMPLATE_FIELD newOne;
+					newOne.FieldType = SwapBytes(&curEntry->FieldType);
+					newOne.FieldLength = SwapBytes(&curEntry->FieldLength);
+					fields.push_back(newOne);
+#else
+					fields.push_back(*curEntry);
+#endif
+					packetIterator += sizeof(NETFLOW9_TEMPLATE_FIELD);
+				}
+
+				// Add the template to the cache. If the template already exists, it will not be added.
+				v9TemplateCacheInstance->AddTemplate(&buffer->GeneratorIpAddress, sourceId, templateId, fields);
+			}
 		}
-	}
-	else
-	{
-		return false;
+		else if (flowsetId >= 256)
+		{
+			// Attempt to retrieve the template that is associated with the data. If no template is found, discard the packet.
+			const PNETFLOW9_TEMPLATE_CACHE_ENTRY foundTemplate = v9TemplateCacheInstance->FindTemplate(flowsetId);
+			if (foundTemplate)
+			{
+				// Walk the flows inside the flowset.
+				outRecords.reserve(flowCount);
+				for (unsigned short i = 0; i < flowCount; ++i)
+				{
+					outSequences.push_back(sequenceCounter + i);
+					std::vector<EvoNetflow9FieldValueSet> thisrecord;
+					thisrecord.reserve(foundTemplate->FieldList.size());
+					foundTemplate->ParseFieldsUsingTemplate((PNETFLOW9_DATA_FLOWSET_HEADER)packetIterator, thisrecord);
+					outRecords.push_back(thisrecord);
+				}
+			}
+		}
+		
+		// Increment the packet iterator to point at the next flowset.
+		packetIterator += flowsetLength - sizeof(NETFLOW9_FLOWSET_HEADER);
 	}
 
 	return true;

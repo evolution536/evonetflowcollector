@@ -57,11 +57,14 @@ void EvoProcessingDispatcher::ProcessPacket(QueuedPacketDescriptor* const pPacke
 	}
 	else if (netflowVersion == 9)
 	{
-		std::vector<EvoNetflow9FieldValueSet> fields;
-		unsigned int sequenceNumber;
-		if (ParseNetflow9Packet(pPacket, &sequenceNumber, fields))
+		std::vector<std::vector<EvoNetflow9FieldValueSet>> flows;
+		std::vector<unsigned int> sequenceNumbers;
+		if (ParseNetflow9Packet(pPacket, sequenceNumbers, flows))
 		{
-			this->FlowReceived9(sequenceNumber, fields);
+			for (unsigned int i = 0; i < flows.size(); ++i)
+			{
+				this->FlowReceived9(sequenceNumbers[i], flows[i]);
+			}
 		}
 	}
 
