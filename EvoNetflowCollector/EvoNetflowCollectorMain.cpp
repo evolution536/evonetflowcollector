@@ -30,7 +30,9 @@
 #include "EvoNetflow9TemplateCache.h"
 #include "UtilityFunctions.h"
 
-#define _countof(a) (sizeof(a)/sizeof(*(a)))
+#ifndef _WIN32
+	#define _countof(a) (sizeof(a)/sizeof(*(a)))
+#endif
 
 extern EvoProcessingDispatcher eventDispatcher;
 NetflowLogger* netflowLoggerInstance = NULL;
@@ -44,8 +46,8 @@ std::string loggingMethod;
 std::string logFileArg;
 
 std::deque<std::string> mProcessedEventsQueue;
-std::mutex eventQueueMutex;
-std::unique_lock<std::mutex> eventQueueLock(eventQueueMutex);
+volatile bool mIsReading = false;
+volatile bool mIsWriting = false;
 
 // Holds string representations for numeric protocol type identifiers.
 const char* const ProtocolStringArray[] =
@@ -399,9 +401,13 @@ void FlowReceivedCallback5(const unsigned int SequenceCounter, PNETFLOW5_FLOW_RE
 	totalBytes += record->BytesCount;
 
 	// Add the Netflow line to the queue for log processing.
-	eventQueueLock.lock();
+	while (mIsReading)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	mIsWriting = true;
 	mProcessedEventsQueue.push_back(next.str());
-	eventQueueLock.unlock();
+	mIsWriting = false;
 }
 
 std::string GetNetflow9FieldResult(const std::vector<EvoNetflow9FieldValueSet>& outRecords, const unsigned short fieldnum)
@@ -431,9 +437,13 @@ void FlowReceivedCallback9(const unsigned int SequenceCounter, const std::vector
 	totalBytes += tempValue;
 
 	// Add the Netflow line to the queue for log processing.
-	eventQueueLock.lock();
+	while (mIsReading)
+	{
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
+	mIsWriting = true;
 	mProcessedEventsQueue.push_back(next.str());
-	eventQueueLock.unlock();
+	mIsWriting = false;
 }
 
 int main(int argc, char* argv[])
@@ -530,7 +540,12 @@ int main(int argc, char* argv[])
 	// Keep a loop running to process asynchronous event callbacks.
 	while (1)
 	{
-		eventQueueLock.lock();
+		while (mIsWriting)
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
+		mIsReading = true;
+
 		while (mProcessedEventsQueue.size() > 0)
 		{
 			// Increment the amount of flows that are collected.
@@ -549,7 +564,7 @@ int main(int argc, char* argv[])
 			mProcessedEventsQueue.pop_front();
 		}
 
-		eventQueueLock.unlock();
+		mIsReading = false;
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 
