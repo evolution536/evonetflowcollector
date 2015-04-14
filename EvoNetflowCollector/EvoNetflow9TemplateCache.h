@@ -44,7 +44,7 @@ typedef struct _NETFLOW9_TEMPLATE_CACHE_ENTRY
 		this->TemplateID = TemplateID;
 	};
 
-	void ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, std::vector<EvoNetflow9FieldValueSet>& outRecords);
+	const unsigned int ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, std::vector<EvoNetflow9FieldValueSet>& outRecords);
 } NETFLOW9_TEMPLATE_CACHE_ENTRY, *PNETFLOW9_TEMPLATE_CACHE_ENTRY;
 
 // Comparison function for template cache entries.
@@ -73,10 +73,10 @@ public:
 		return &instance;
 	}
 
-	const PNETFLOW9_TEMPLATE_CACHE_ENTRY FindTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID) const;
+	PNETFLOW9_TEMPLATE_CACHE_ENTRY FindTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID) const;
 	const PNETFLOW9_TEMPLATE_CACHE_ENTRY FindTemplate(const unsigned short TemplateID) const;
 
-	const bool AddTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID, const std::vector<NETFLOW9_TEMPLATE_FIELD>& fields);
+	void AddTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID, const std::vector<NETFLOW9_TEMPLATE_FIELD>& fields);
 	const bool RemoveTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID);
 };
 

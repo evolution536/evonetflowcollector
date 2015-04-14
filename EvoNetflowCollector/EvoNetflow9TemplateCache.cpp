@@ -21,10 +21,11 @@
 #include <sstream>
 
 // Parses fields from a data flowset using the template.
-void NETFLOW9_TEMPLATE_CACHE_ENTRY::ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, std::vector<EvoNetflow9FieldValueSet>& outRecords)
+const unsigned int NETFLOW9_TEMPLATE_CACHE_ENTRY::ParseFieldsUsingTemplate(const PNETFLOW9_DATA_FLOWSET_HEADER pDataHeader, std::vector<EvoNetflow9FieldValueSet>& outRecords)
 {
 	const char* packetIterator = (char*)&pDataHeader->FieldCollection[0];
 	const unsigned int fieldCount = this->FieldList.size();
+	unsigned int sizeVal = 0;
 	for (unsigned int b = 0; b < fieldCount; ++b)
 	{
 		const PNETFLOW9_TEMPLATE_FIELD currentFieldEntry = this->FieldList.cbegin()._Ptr + b;
@@ -32,7 +33,8 @@ void NETFLOW9_TEMPLATE_CACHE_ENTRY::ParseFieldsUsingTemplate(const PNETFLOW9_DAT
 		entry.Field = currentFieldEntry->FieldType;
 		std::stringstream stream;
 #ifdef _WIN32
-		const char* finalvalue = new char[currentFieldEntry->FieldLength];
+		char* finalvalue = new char[currentFieldEntry->FieldLength];
+		memcpy(finalvalue, packetIterator, currentFieldEntry->FieldLength);
 #else
 		const char* finalvalue = packetIterator;
 #endif
@@ -45,7 +47,10 @@ void NETFLOW9_TEMPLATE_CACHE_ENTRY::ParseFieldsUsingTemplate(const PNETFLOW9_DAT
 		delete[] finalvalue;
 #endif
 		packetIterator += currentFieldEntry->FieldLength;
+		sizeVal += currentFieldEntry->FieldLength;
 	}
+
+	return sizeVal;
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -61,7 +66,7 @@ EvoNetflow9TemplateCache::~EvoNetflow9TemplateCache()
 }
 
 // Checks for the existence of a template with specified parameters.
-const PNETFLOW9_TEMPLATE_CACHE_ENTRY EvoNetflow9TemplateCache::FindTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID) const
+PNETFLOW9_TEMPLATE_CACHE_ENTRY EvoNetflow9TemplateCache::FindTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID) const
 {
 	const NETFLOW9_TEMPLATE_CACHE_ENTRY compare(srcIp, sourceID, TemplateID);
 	for (unsigned int i = 0; i < this->mTemplateCache.size(); ++i)
@@ -90,17 +95,19 @@ const PNETFLOW9_TEMPLATE_CACHE_ENTRY EvoNetflow9TemplateCache::FindTemplate(cons
 }
 
 // Adds a new template entry to the cache if it does not already exist.
-const bool EvoNetflow9TemplateCache::AddTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID, const std::vector<NETFLOW9_TEMPLATE_FIELD>& fields)
+void EvoNetflow9TemplateCache::AddTemplate(const UNIVERSAL_IPADDRESS* srcIp, const unsigned long sourceID, unsigned short TemplateID, const std::vector<NETFLOW9_TEMPLATE_FIELD>& fields)
 {
-	if (!this->FindTemplate(srcIp, sourceID, TemplateID))
+	PNETFLOW9_TEMPLATE_CACHE_ENTRY current = this->FindTemplate(srcIp, sourceID, TemplateID);
+	if (current)
+	{
+		current->FieldList = fields;
+	}
+	else
 	{
 		NETFLOW9_TEMPLATE_CACHE_ENTRY entry(srcIp, sourceID, TemplateID);
 		entry.FieldList = fields;
 		this->mTemplateCache.push_back(entry);
-		return true;
 	}
-
-	return false;
 }
 
 // Removes a template from the cache if it exists.

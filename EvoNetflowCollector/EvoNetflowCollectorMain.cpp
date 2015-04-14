@@ -28,6 +28,7 @@
 #include "EvoProcessingDispatcher.h"
 #include "NetflowLogger.h"
 #include "EvoNetflow9TemplateCache.h"
+#include "UtilityFunctions.h"
 
 extern EvoProcessingDispatcher eventDispatcher;
 NetflowLogger* netflowLoggerInstance = NULL;
@@ -41,6 +42,8 @@ std::string loggingMethod;
 std::string logFileArg;
 
 std::deque<std::string> mProcessedEventsQueue;
+std::mutex eventQueueMutex;
+std::unique_lock<std::mutex> eventQueueLock(eventQueueMutex);
 
 // Holds string representations for numeric protocol type identifiers.
 const char* const ProtocolStringArray[] =
@@ -234,20 +237,38 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case TOTAL_FLOWS_EXP:
 		case IN_PERMANENT_BYTES:
 		case IN_PERMANENT_PKTS:
+#ifdef _WIN32
+			outVal << SwapBytes((unsigned long*)fieldVal);
+#else
 			outVal << *(unsigned long*)fieldVal;
+#endif
+			return true;
+		case IP_PROTOCOL_VERSION:
+			outVal << ((int)*fieldVal == 6) ? "IPv6" : "IPv4";
 			return true;
 		case PROTOCOL:
-			outVal << ProtocolStringArray[fieldType];
+			if (*fieldVal < _countof(ProtocolStringArray))
+			{
+				outVal << ProtocolStringArray[*fieldVal];
+				return true;
+			}
+			return false;
+		case SAMPLING_ALGORITHM:
+			outVal << ((int)*fieldVal == 0x1) ? "Deterministic" : "Random";
 			return true;
+		case ENGINE_TYPE:
+			outVal << ((int)*fieldVal == 0x1) ? "VIP/Linecard" : "RP";
+			return true;
+		case DIRECTION:
+			outVal << ((int)*fieldVal == 0x1) ? "egress" : "ingress";
+			return true;
+		case MUL_IGMP_TYPE:
 		case SRC_TOS:
 		case TCP_FLAGS:
 		case SRC_MASK:
 		case DST_MASK:
 		case IPV6_SRC_MASK:
 		case IPV6_DST_MASK:
-		case MUL_IGMP_TYPE:
-		case SAMPLING_ALGORITHM:
-		case ENGINE_TYPE:
 		case ENGINE_ID:
 		case MPLS_TOP_LABEL_TYPE:
 		case FLOW_SAMPLER_ID:
@@ -255,8 +276,6 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case MIN_TTL:
 		case MAX_TTL:
 		case DST_TOS:
-		case IP_PROTOCOL_VERSION:
-		case DIRECTION:
 			outVal << (int)*fieldVal;
 			return true;
 		case L4_SRC_PORT:
@@ -271,18 +290,19 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case DST_VLAN:
 		case SRC_AS:
 		case DST_AS:
+#ifdef _WIN32
+			outVal << SwapBytes((unsigned short*)fieldVal);
+#else
 			outVal << *(unsigned short*)fieldVal;
+#endif
 			return true;
 		case INPUT_SNMP:
 		case OUTPUT_SNMP:
-			if (fieldLength == sizeof(int))
-			{
-				outVal << *(unsigned long*)fieldVal;
-			}
-			else
-			{
-				outVal << *(unsigned short*)fieldVal;
-			}
+#ifdef _WIN32
+			outVal << (fieldLength == sizeof(int)) ? SwapBytes((unsigned long*)fieldVal) : SwapBytes((unsigned short*)fieldVal);
+#else
+			outVal << (fieldLength == sizeof(int)) ? *(unsigned long*)fieldVal : *(unsigned short*)fieldVal;
+#endif
 			return true;
 		case IPV4_SRC_ADDR:
 		case IPV4_DST_ADDR:
@@ -290,7 +310,11 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case BGP_IPV4_NEXT_HOP:
 		case IPV4_SRC_PREFIX:
 		case IPV4_DST_PREFIX:
+#ifdef _WIN32
+			outVal << Ipv4ToString(SwapBytes((IPV4ADDRESS*)fieldVal));
+#else
 			outVal << Ipv4ToString(*(IPV4ADDRESS*)fieldVal);
+#endif
 			return true;
 		case IPV6_SRC_ADDR:
 		case IPV6_DST_ADDR:
@@ -371,7 +395,11 @@ void FlowReceivedCallback5(const unsigned int SequenceCounter, PNETFLOW5_FLOW_RE
 
 	// Push the event to the queue for processing in UI thread.
 	totalBytes += record->BytesCount;
+
+	// Add the Netflow line to the queue for log processing.
+	eventQueueLock.lock();
 	mProcessedEventsQueue.push_back(next.str());
+	eventQueueLock.unlock();
 }
 
 std::string GetNetflow9FieldResult(const std::vector<EvoNetflow9FieldValueSet>& outRecords, const unsigned short fieldnum)
@@ -390,7 +418,7 @@ std::string GetNetflow9FieldResult(const std::vector<EvoNetflow9FieldValueSet>& 
 void FlowReceivedCallback9(const unsigned int SequenceCounter, const std::vector<EvoNetflow9FieldValueSet>& outRecords)
 {
 	std::stringstream next;
-	next << "FLOW " << 1337 << ": " << GetNetflow9FieldResult(outRecords, IPV4_SRC_ADDR) << ":" << GetNetflow9FieldResult(outRecords, L4_SRC_PORT) << " <> "
+	next << "FLOW " << SequenceCounter << ": " << GetNetflow9FieldResult(outRecords, IPV4_SRC_ADDR) << ":" << GetNetflow9FieldResult(outRecords, L4_SRC_PORT) << " <> "
 		<< GetNetflow9FieldResult(outRecords, IPV4_DST_ADDR) << ":" << GetNetflow9FieldResult(outRecords, L4_DST_PORT) << " Bytes: " << GetNetflow9FieldResult(outRecords, IN_BYTES)
 		<< " Packets: " << GetNetflow9FieldResult(outRecords, IN_PKTS) << " Protocol: " << GetNetflow9FieldResult(outRecords, PROTOCOL);
 
@@ -399,22 +427,17 @@ void FlowReceivedCallback9(const unsigned int SequenceCounter, const std::vector
 	unsigned long tempValue;
 	converter >> tempValue;
 	totalBytes += tempValue;
-	mProcessedEventsQueue.push_back(next.str());
-}
 
-void EvoGetMajorMinorVersion(WORD* const pMajor, WORD* const pMinor)
-{
-	*pMajor = 1;
-	*pMinor = 0;
+	// Add the Netflow line to the queue for log processing.
+	eventQueueLock.lock();
+	mProcessedEventsQueue.push_back(next.str());
+	eventQueueLock.unlock();
 }
 
 int main(int argc, char* argv[])
 {
 	// Parse the command line arguments.
-	WORD major;
-	WORD minor;
-	EvoGetMajorMinorVersion(&major, &minor);
-	std::cout << "Evo Netflow Collector " << major << "." << minor << " by evolution536" << std::endl;
+	std::cout << "Evo Netflow Collector by evolution536" << std::endl;
 	for (int i = 1; i < argc; ++i)
 	{
 		// Check whether the user wants the help menu displayed.
@@ -505,6 +528,7 @@ int main(int argc, char* argv[])
 	// Keep a loop running to process asynchronous event callbacks.
 	while (1)
 	{
+		eventQueueLock.lock();
 		while (mProcessedEventsQueue.size() > 0)
 		{
 			// Increment the amount of flows that are collected.
@@ -523,6 +547,7 @@ int main(int argc, char* argv[])
 			mProcessedEventsQueue.pop_front();
 		}
 
+		eventQueueLock.unlock();
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 

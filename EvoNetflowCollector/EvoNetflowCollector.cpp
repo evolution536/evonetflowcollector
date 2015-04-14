@@ -59,6 +59,7 @@ EvoNetflowCollector::~EvoNetflowCollector()
 #endif
 }
 
+// Binds the Netflow collector socket to the specified port. Currently only IPv4!
 const bool EvoNetflowCollector::Bind(const int port)
 {
 	if (this->ListenSocket == INVALID_SOCKET)
@@ -76,6 +77,7 @@ const bool EvoNetflowCollector::Bind(const int port)
 	return bind(this->ListenSocket, (sockaddr*)&info, infolen) != SOCKET_ERROR;
 }
 
+// Starts the listener thread to listen for Netflow packets.
 const bool EvoNetflowCollector::BeginListen()
 {
 	if (this->ListenSocket == INVALID_SOCKET)
@@ -94,12 +96,14 @@ const bool EvoNetflowCollector::BeginListen()
 	return true;
 }
 
+// Stops the internal listener thread.
 void EvoNetflowCollector::StopListening()
 {
 	this->mRunning = false;
 	this->mSocketThread.join();
 }
 
+// Internal listener function, runs asynchronously.
 void EvoNetflowCollector::ListenerThread()
 {
 	sockaddr_in clientinfo;
@@ -117,10 +121,11 @@ void EvoNetflowCollector::ListenerThread()
 		if (bytesRead > 0)
 		{
 			// To avoid missing packets, dispatch the processing of each to another worker.
-			char* safeBuffer = new char[sizeof(buffer)];
-			memcpy(safeBuffer, buffer, sizeof(buffer));
+			char* safeBuffer = new char[bytesRead];
+			memcpy(safeBuffer, buffer, bytesRead);
 			QueuedPacketDescriptor desc(safeBuffer, bytesRead);
 			desc.GeneratorIpAddress.IpAddress4 = clientinfo.sin_addr.S_un.S_addr;
+			// IPv6 connections, still need to implement it!
 			eventDispatcher.QueuePacket(&desc);
 		}
 	}
@@ -128,6 +133,7 @@ void EvoNetflowCollector::ListenerThread()
 
 // --------------------------------------------------------------------------------------------------------
 
+// Retrieves the version of a Netflow packet. Used to spot invalid packets.
 const int CheckNetflowPacketVersion(const char* buffer)
 {
 	if (buffer)
@@ -142,6 +148,7 @@ const int CheckNetflowPacketVersion(const char* buffer)
 	return 0;
 }
 
+// Parses a Netflow v5 packet and returns the flows that are inside it.
 const bool ParseNetflow5Packet(const QueuedPacketDescriptor* buffer, std::vector<unsigned int>& outSequences, std::vector<NETFLOW5_FLOW_RECORD>& outRecords)
 {
 	if (!buffer->PacketBuffer)
@@ -155,13 +162,20 @@ const bool ParseNetflow5Packet(const QueuedPacketDescriptor* buffer, std::vector
 	}
 
 	// Retrieve flows from the packet.
-	const PNETFLOW5_HEADER nfHeader = (PNETFLOW5_HEADER)buffer;
+	const PNETFLOW5_HEADER nfHeader = (PNETFLOW5_HEADER)buffer->PacketBuffer;
+
 #ifdef _WIN32
-	const int flowCount = SwapBytes(&nfHeader->FlowCount);
+	const unsigned short flowCount = SwapBytes(&nfHeader->FlowCount);
+	if (flowCount > 30)
+	{
+		return false;
+	}
+
+	// Walk the flows in the packet and parse them using the Netflow v5 structures.
 	outRecords.reserve(flowCount);
-	PNETFLOW5_FLOW_RECORD flowRecord = (PNETFLOW5_FLOW_RECORD)(buffer + sizeof(NETFLOW5_HEADER));
+	PNETFLOW5_FLOW_RECORD flowRecord = (PNETFLOW5_FLOW_RECORD)(buffer->PacketBuffer + sizeof(NETFLOW5_HEADER));
 	unsigned int seq = SwapBytes(&nfHeader->FlowSequence);
-	for (int i = 0; i < flowCount; ++i, ++flowRecord)
+	for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
 	{
 		outSequences.push_back(seq + i);
 		NETFLOW5_FLOW_RECORD newRecord;
@@ -186,9 +200,15 @@ const bool ParseNetflow5Packet(const QueuedPacketDescriptor* buffer, std::vector
 		outRecords.push_back(newRecord);
 	}
 #else
+	if (nfHeader->FlowCount > 30)
+	{
+		return false;
+	}
+
+	// Walk the flows in the packet and parse them using the Netflow v5 structures.
 	outSequences.push_back(nfHeader->FlowSequence);
 	outRecords.reserve(nfHeader->FlowCount);
-	PNETFLOW5_FLOW_RECORD flowRecord = (PNETFLOW5_FLOW_RECORD)(buffer + sizeof(NETFLOW5_HEADER));
+	PNETFLOW5_FLOW_RECORD flowRecord = (PNETFLOW5_FLOW_RECORD)(buffer->PacketBuffer + sizeof(NETFLOW5_HEADER));
 	for (int i = 0; i < nfHeader->FlowCount; ++i, ++flowRecord)
 	{
 		outSequences.push_back(nfHeader->FlowSequence + i);
@@ -199,8 +219,9 @@ const bool ParseNetflow5Packet(const QueuedPacketDescriptor* buffer, std::vector
 	return true;
 }
 
+// Parses a Netflow v9 packet, handles templates and returns the flows inside of the packet.
 const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector<unsigned int>& outSequences, std::vector<std::vector<EvoNetflow9FieldValueSet>>& outRecords)
-{)
+{
 	if (!buffer->PacketBuffer)
 	{
 		return false;
@@ -214,6 +235,7 @@ const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector
 	// Retrieve flows from the packet.
 	const PNETFLOW9_HEADER nfHeader = (PNETFLOW9_HEADER)buffer->PacketBuffer;
 	const int sequenceCounter = nfHeader->PackageSequence;
+
 #ifdef _WIN32
 	const unsigned long sourceId = SwapBytes(&nfHeader->SourceID);
 	const unsigned short flowCount = SwapBytes(&nfHeader->FlowCount);
@@ -222,8 +244,15 @@ const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector
 	const unsigned short flowCount = nfHeader->FlowCount;
 #endif
 
+	// There cannot be more than 30 flows in the packet. If there are, it is invalid.
+	if (flowCount > 30)
+	{
+		return false;
+	}
+
+	// Parse the packet until we run out of bytes. We must not run outside of the buffer.
 	const char* packetIterator = buffer->PacketBuffer + sizeof(NETFLOW9_HEADER);
- 	while (packetIterator < buffer->PacketBuffer + buffer->PacketLength)
+ 	while (packetIterator < (buffer->PacketBuffer + buffer->PacketLength))
 	{
 		PNETFLOW9_FLOWSET_HEADER flowHeader = (PNETFLOW9_FLOWSET_HEADER)packetIterator;
 #ifdef _WIN32
@@ -236,12 +265,12 @@ const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector
 		packetIterator += sizeof(NETFLOW9_FLOWSET_HEADER);
 		if (flowsetId < 256)
 		{
-			// Flowset ID of 1 is an options template. Otherwise it is a data template.
+			// Flowset ID of 1 is an options template. Flowset ID of 0 is a data template.
 			if (flowsetId == 1)
 			{
-
+				 // Not supported yet. :)
 			}
-			else
+			else if (flowsetId == 0)
 			{
 				// The packet contains a data template.
 				const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = (PNETFLOW9_TEMPLATE_FLOWSET_HEADER)packetIterator;
@@ -252,11 +281,13 @@ const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector
 				const unsigned short templateId = templateHeader->TemplateID;
 				const unsigned short fieldCount = templateHeader->FieldCount;
 #endif
+
+				// Walk the fields in the template and save it.
 				packetIterator += sizeof(NETFLOW9_TEMPLATE_FLOWSET_HEADER);
 				std::vector<NETFLOW9_TEMPLATE_FIELD> fields;
 				for (unsigned short i = 0; i < fieldCount; ++i)
 				{
-					const PNETFLOW9_TEMPLATE_FIELD curEntry = ((PNETFLOW9_TEMPLATE_FIELD)packetIterator) + i;
+					const PNETFLOW9_TEMPLATE_FIELD curEntry = (PNETFLOW9_TEMPLATE_FIELD)packetIterator;
 #ifdef _WIN32
 					NETFLOW9_TEMPLATE_FIELD newOne;
 					newOne.FieldType = SwapBytes(&curEntry->FieldType);
@@ -268,7 +299,7 @@ const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector
 					packetIterator += sizeof(NETFLOW9_TEMPLATE_FIELD);
 				}
 
-				// Add the template to the cache. If the template already exists, it will not be added.
+				// Add the template to the cache. If the template already exists, the fields will be replaced.
 				v9TemplateCacheInstance->AddTemplate(&buffer->GeneratorIpAddress, sourceId, templateId, fields);
 			}
 		}
@@ -279,20 +310,30 @@ const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector
 			if (foundTemplate)
 			{
 				// Walk the flows inside the flowset.
+				unsigned short processedLength = 0;
 				outRecords.reserve(flowCount);
 				for (unsigned short i = 0; i < flowCount; ++i)
 				{
 					outSequences.push_back(sequenceCounter + i);
 					std::vector<EvoNetflow9FieldValueSet> thisrecord;
 					thisrecord.reserve(foundTemplate->FieldList.size());
-					foundTemplate->ParseFieldsUsingTemplate((PNETFLOW9_DATA_FLOWSET_HEADER)packetIterator, thisrecord);
+
+					// Parse the data using the fields in the associated data template.
+					const int currentLength = foundTemplate->ParseFieldsUsingTemplate((PNETFLOW9_DATA_FLOWSET_HEADER)packetIterator, thisrecord);
+					processedLength += currentLength;
+					packetIterator += currentLength;
 					outRecords.push_back(thisrecord);
 				}
+
+				// If there is a padding at the end of the flowset, we can handle it by adding the leftover bytes to the iterator.
+				packetIterator += flowsetLength - processedLength;
+			}
+			else
+			{
+				// If the data flowset could not be parsed using a template, skip it.
+				packetIterator += flowsetLength;
 			}
 		}
-		
-		// Increment the packet iterator to point at the next flowset.
-		packetIterator += flowsetLength - sizeof(NETFLOW9_FLOWSET_HEADER);
 	}
 
 	return true;

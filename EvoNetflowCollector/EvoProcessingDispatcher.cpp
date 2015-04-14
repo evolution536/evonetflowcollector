@@ -87,12 +87,14 @@ void EvoProcessingDispatcher::ProcessingLoop()
 {
 	while (this->_running)
 	{
+		this->mQueueCs.lock();
 		while (this->mQueuedPackets.size() > 0)
 		{
 			this->ProcessPacket(&this->mQueuedPackets.front());
 			this->mQueuedPackets.pop_front();
 		}
 
+		this->mQueueCs.unlock();
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 }

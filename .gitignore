@@ -6,3 +6,7 @@ Debug/*
 *.user
 EvoNetflowCollector/Debug/*
 EvoNetflowCollector/Release/*
+*.psess
+*.m4
+EvoNetflowCollector/autom4te.cache/*
+EvoNetflowCollector/config.status
