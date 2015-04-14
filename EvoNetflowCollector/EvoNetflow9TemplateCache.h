@@ -18,6 +18,10 @@
 #ifndef EVO_NETFLOW9_TEMPLATE_CACHE_H
 #define EVO_NETFLOW9_TEMPLATE_CACHE_H
 
+#ifndef _WIN32
+	#include <string.h>
+#endif
+
 #include <vector>
 #include "EvoNetflow.h"
 #include "EvoNetflowCollector.h"

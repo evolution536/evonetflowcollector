@@ -124,7 +124,11 @@ void EvoNetflowCollector::ListenerThread()
 			char* safeBuffer = new char[bytesRead];
 			memcpy(safeBuffer, buffer, bytesRead);
 			QueuedPacketDescriptor desc(safeBuffer, bytesRead);
+#ifdef _WIN32
 			desc.GeneratorIpAddress.IpAddress4 = clientinfo.sin_addr.S_un.S_addr;
+#else
+			desc.GeneratorIpAddress.IpAddress4 = clientinfo.sin_addr.s_addr;
+#endif
 			// IPv6 connections, still need to implement it!
 			eventDispatcher.QueuePacket(&desc);
 		}

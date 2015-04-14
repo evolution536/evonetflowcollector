@@ -30,6 +30,8 @@
 #include "EvoNetflow9TemplateCache.h"
 #include "UtilityFunctions.h"
 
+#define _countof(a) (sizeof(a)/sizeof(*(a)))
+
 extern EvoProcessingDispatcher eventDispatcher;
 NetflowLogger* netflowLoggerInstance = NULL;
 extern EvoNetflow9TemplateCache* v9TemplateCacheInstance;
@@ -244,23 +246,23 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 #endif
 			return true;
 		case IP_PROTOCOL_VERSION:
-			outVal << ((int)*fieldVal == 6) ? "IPv6" : "IPv4";
+			outVal << (((int)*fieldVal == 6) ? "IPv6" : "IPv4");
 			return true;
 		case PROTOCOL:
-			if (*fieldVal < _countof(ProtocolStringArray))
+			if ((int)*fieldVal < (int)_countof(ProtocolStringArray))
 			{
-				outVal << ProtocolStringArray[*fieldVal];
+				outVal << ProtocolStringArray[(int)*fieldVal];
 				return true;
 			}
 			return false;
 		case SAMPLING_ALGORITHM:
-			outVal << ((int)*fieldVal == 0x1) ? "Deterministic" : "Random";
+			outVal << (((int)*fieldVal == 0x1) ? "Deterministic" : "Random");
 			return true;
 		case ENGINE_TYPE:
-			outVal << ((int)*fieldVal == 0x1) ? "VIP/Linecard" : "RP";
+			outVal << (((int)*fieldVal == 0x1) ? "VIP/Linecard" : "RP");
 			return true;
 		case DIRECTION:
-			outVal << ((int)*fieldVal == 0x1) ? "egress" : "ingress";
+			outVal << (((int)*fieldVal == 0x1) ? "egress" : "ingress");
 			return true;
 		case MUL_IGMP_TYPE:
 		case SRC_TOS:
@@ -299,9 +301,9 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case INPUT_SNMP:
 		case OUTPUT_SNMP:
 #ifdef _WIN32
-			outVal << (fieldLength == sizeof(int)) ? SwapBytes((unsigned long*)fieldVal) : SwapBytes((unsigned short*)fieldVal);
+			outVal << ((fieldLength == sizeof(int)) ? SwapBytes((unsigned long*)fieldVal) : SwapBytes((unsigned short*)fieldVal));
 #else
-			outVal << (fieldLength == sizeof(int)) ? *(unsigned long*)fieldVal : *(unsigned short*)fieldVal;
+			outVal << ((fieldLength == sizeof(int)) ? *(unsigned long*)fieldVal : *(unsigned short*)fieldVal);
 #endif
 			return true;
 		case IPV4_SRC_ADDR:
@@ -543,7 +545,7 @@ int main(int argc, char* argv[])
 			{
 				netflowLoggerInstance->WriteNetflow(str);
 			}
-			
+
 			mProcessedEventsQueue.pop_front();
 		}
 

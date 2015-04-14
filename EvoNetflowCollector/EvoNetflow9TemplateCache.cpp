@@ -28,7 +28,7 @@ const unsigned int NETFLOW9_TEMPLATE_CACHE_ENTRY::ParseFieldsUsingTemplate(const
 	unsigned int sizeVal = 0;
 	for (unsigned int b = 0; b < fieldCount; ++b)
 	{
-		const PNETFLOW9_TEMPLATE_FIELD currentFieldEntry = this->FieldList.cbegin()._Ptr + b;
+		const PNETFLOW9_TEMPLATE_FIELD currentFieldEntry = &this->FieldList[b];
 		EvoNetflow9FieldValueSet entry;
 		entry.Field = currentFieldEntry->FieldType;
 		std::stringstream stream;
@@ -73,7 +73,7 @@ PNETFLOW9_TEMPLATE_CACHE_ENTRY EvoNetflow9TemplateCache::FindTemplate(const UNIV
 	{
 		if (this->mTemplateCache[i] == compare)
 		{
-			return (this->mTemplateCache.begin() + i)._Ptr;
+			return const_cast<PNETFLOW9_TEMPLATE_CACHE_ENTRY>(&this->mTemplateCache[i]);
 		}
 	}
 
@@ -87,7 +87,7 @@ const PNETFLOW9_TEMPLATE_CACHE_ENTRY EvoNetflow9TemplateCache::FindTemplate(cons
 	{
 		if (this->mTemplateCache[i].TemplateID == TemplateID)
 		{
-			return (this->mTemplateCache.begin() + i)._Ptr;
+			return const_cast<PNETFLOW9_TEMPLATE_CACHE_ENTRY>(&this->mTemplateCache[i]);
 		}
 	}
 
