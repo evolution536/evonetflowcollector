@@ -24,6 +24,7 @@
 #include <sstream>
 #include <iostream>
 #include <signal.h>
+#include <ctime>
 #include "EvoNetflowCollector.h"
 #include "EvoProcessingDispatcher.h"
 #include "NetflowLogger.h"
@@ -40,6 +41,7 @@ extern EvoNetflow9TemplateCache* v9TemplateCacheInstance;
 
 unsigned int totalFlows = 0;
 unsigned long long totalBytes = 0;
+std::time_t startTime;
 bool helpArg = false;
 unsigned short portArg = 0;
 std::string loggingMethod;
@@ -199,17 +201,57 @@ const char* const ProtocolStringArray[] =
 
 // ----------------------------------------------------------------------------------------------------
 
+// Custom itoa function, solely for converting IP-address numbers. Copy-pasted from StackOverflow.
+const int itoa_custom(const int value, char* sp, const int radix)
+{
+	char tmp[16];// be careful with the length of the buffer
+	char *tp = tmp;
+	int i;
+	unsigned v;
+
+	int sign = (radix == 10 && value < 0);
+	if (sign)
+		v = -value;
+	else
+		v = (unsigned)value;
+
+	while (v || tp == tmp)
+	{
+		i = v % radix;
+		v /= radix; // v/=radix uses less CPU clocks than v=v/radix does
+		if (i < 10)
+			*tp++ = i + '0';
+		else
+			*tp++ = i + 'a' - 10;
+	}
+
+	int len = tp - tmp;
+
+	if (sign)
+	{
+		*sp++ = '-';
+		len++;
+	}
+
+	while (tp > tmp)
+		*sp++ = *--tp;
+
+	return len;
+}
+
 // Converts a long IPv4 address to its string representation.
 std::string Ipv4ToString(const IPV4ADDRESS ipv4)
 {
-	unsigned char bytes[4];
-	bytes[3] = ipv4 & 0xFF;
-	bytes[2] = (ipv4 >> 8) & 0xFF;
-	bytes[1] = (ipv4 >> 16) & 0xFF;
-	bytes[0] = (ipv4 >> 24) & 0xFF;
-	std::stringstream outstream;
-	outstream << (int)bytes[0] << "." << (int)bytes[1] << "." << (int)bytes[2] << "." << (int)bytes[3];
-	return outstream.str();
+	char ipbuffer[16];
+	int strlength = itoa_custom((ipv4 >> 24) & 0xFF, ipbuffer, 10);
+	ipbuffer[strlength++] = 0x2E;
+	strlength += itoa_custom((ipv4 >> 16) & 0xFF, ipbuffer + strlength, 10);
+	ipbuffer[strlength++] = 0x2E;
+	strlength += itoa_custom((ipv4 >> 8) & 0xFF, ipbuffer + strlength, 10);
+	ipbuffer[strlength++] = 0x2E;
+	strlength += itoa_custom(ipv4 & 0xFF, ipbuffer + strlength, 10);
+	ipbuffer[strlength] = 0;
+	return std::string(ipbuffer);
 }
 
 std::string MacAddressToString(const unsigned char addr[6])
@@ -241,6 +283,9 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case TOTAL_FLOWS_EXP:
 		case IN_PERMANENT_BYTES:
 		case IN_PERMANENT_PKTS:
+		case SRC_TRAFFIC_INDEX:
+		case DST_TRAFFIC_INDEX:
+		case replication_factor:
 #ifdef _WIN32
 			outVal << SwapBytes((unsigned long*)fieldVal);
 #else
@@ -280,6 +325,9 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case MIN_TTL:
 		case MAX_TTL:
 		case DST_TOS:
+		case FORWARDING_STATUS:
+		case MPLS_PREFIX_LEN:
+		case postipDiffServCodePoint:
 			outVal << (int)*fieldVal;
 			return true;
 		case L4_SRC_PORT:
@@ -294,6 +342,7 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case DST_VLAN:
 		case SRC_AS:
 		case DST_AS:
+		case FRAGMENT_OFFSET:
 #ifdef _WIN32
 			outVal << SwapBytes((unsigned short*)fieldVal);
 #else
@@ -335,6 +384,8 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case IF_NAME:
 		case IF_DESC:
 		case SAMPLER_NAME:
+		case APPLICATION_DESCRIPTION:
+		case APPLICATION_NAME:
 			outVal << std::string(fieldVal, fieldLength);
 			return true;
 		case VENDOR_PROPRIETARY_1:
@@ -355,9 +406,55 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 		case MPLS_LABEL_8:
 		case MPLS_LABEL_9:
 		case MPLS_LABEL_10:
+		case MPLS_PAL_RD:
+		case APPLICATION_TAG:
+		case DEPRECATED:
+		case layer2packetSectionOffset:
+		case layer2packetSectionSize:
+		case layer2packetSectionData:
 		default:
 			return false;
 	}
+}
+
+// Gets a string representation of the elapsed time since the application started.
+std::string GetElapsedTimeStatistics(const unsigned int elapsed)
+{
+	unsigned short days = 0;
+	unsigned short hours = 0;
+	unsigned short minutes = 0;
+	unsigned short seconds = 0;
+	unsigned int leftover = elapsed;
+
+	// Loop the elapsed time until there is nothing left.
+	while (leftover > 0)
+	{
+		if (leftover > 86400)
+		{
+			++days;
+			leftover -= 86400;
+		}
+		else if (leftover > 3600)
+		{
+			++hours;
+			leftover -= 3600;
+		}
+		else if (leftover > 60)
+		{
+			++minutes;
+			leftover -= 60;
+		}
+		else
+		{
+			seconds = leftover;
+			break;
+		}
+	}
+
+	// Construct a string to represent the elapsed time.
+	std::stringstream output;
+	output << days << " days, " << hours << " hours, " << minutes << " minutes, " << seconds << " seconds";
+	return output.str();
 }
 
 // Finalizes the program before shutting it down.
@@ -374,9 +471,18 @@ void FinalizeProgram()
 		// Display in megabytes.
 		unitOutput << "(" << std::to_string((float)totalBytes / 1024.0f / 1024.0f) << " MB).";
 	}
+
+	// Record time of application shutdown and calculate average packet processing count.
+	std::time_t endtime = std::time(NULL);
+	const unsigned int elapsed = (unsigned int)(endtime - startTime);
+
+	// Output application statistics.
+	std::cout << std::endl << "Netflow collector statistics:" << std::endl << std::endl;
 	std::cout << totalFlows << " flows were collected, totalling " << totalBytes << " bytes " << unitOutput.str() << std::endl;
+	std::cout << "Collected for " << GetElapsedTimeStatistics(elapsed) << " , collecting an average of " << totalFlows / elapsed << " flows/second." << std::endl;
 	std::cout << "Shutting down collector." << std::endl;
 
+	// Clean up used resources.
 	delete netflowLoggerInstance;
 	eventDispatcher.StopDispatcher();
 }
@@ -410,13 +516,13 @@ void FlowReceivedCallback5(const unsigned int SequenceCounter, PNETFLOW5_FLOW_RE
 	mIsWriting = false;
 }
 
-std::string GetNetflow9FieldResult(const std::vector<EvoNetflow9FieldValueSet>& outRecords, const unsigned short fieldnum)
+const char* GetNetflow9FieldResult(const std::vector<EvoNetflow9FieldValueSet>& outRecords, const unsigned short fieldnum)
 {
 	for (auto& fieldset : outRecords)
 	{
 		if (fieldset.Field == fieldnum)
 		{
-			return fieldset.Value;
+			return fieldset.Value.c_str();
 		}
 	}
 
@@ -530,6 +636,9 @@ int main(int argc, char* argv[])
 	// Initialize the template cache class for Netflow v9 input.
 	v9TemplateCacheInstance = EvoNetflow9TemplateCache::GetInstance();
 
+	// Record the time of application startup.
+	startTime = std::time(NULL);
+
 	// Start the dispatcher as well to asynchronously process Netflow input.
 	std::cout << "Listening for Netflow input on port " << portArg << "..." << std::endl;
 	eventDispatcher.FlowReceived5 = FlowReceivedCallback5;
@@ -565,7 +674,7 @@ int main(int argc, char* argv[])
 		}
 
 		mIsReading = false;
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(25));
 	}
 
 	// Clean up resources and let the user know about the statistics.

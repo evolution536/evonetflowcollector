@@ -107,14 +107,15 @@ void EvoNetflowCollector::StopListening()
 void EvoNetflowCollector::ListenerThread()
 {
 	sockaddr_in clientinfo;
-	unsigned int clientinfolen = sizeof(sockaddr_in);
+	char buffer[2048];
 
 	while (this->mRunning)
 	{
 		// Start receiving data from the listening socket.
-		char buffer[2048];
+		int clientinfolen = sizeof(sockaddr_in);
+
 #ifdef _WIN32
-		int bytesRead = recvfrom(this->ListenSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientinfo, (int*)&clientinfolen);
+		int bytesRead = recvfrom(this->ListenSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientinfo, &clientinfolen);
 #else
 		int bytesRead = recvfrom(this->ListenSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientinfo, &clientinfolen);
 #endif
@@ -124,6 +125,7 @@ void EvoNetflowCollector::ListenerThread()
 			char* safeBuffer = new char[bytesRead];
 			memcpy(safeBuffer, buffer, bytesRead);
 			QueuedPacketDescriptor desc(safeBuffer, bytesRead);
+
 #ifdef _WIN32
 			desc.GeneratorIpAddress.IpAddress4 = clientinfo.sin_addr.S_un.S_addr;
 #else
@@ -266,6 +268,13 @@ const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector
 		const unsigned short flowsetId = flowHeader->FlowsetID;
 		const unsigned short flowsetLength = flowHeader->Length;
 #endif
+
+		// Extra check for corrupt packets.
+		if (!flowsetLength || flowsetLength > buffer->PacketLength)
+		{
+			return false;
+		}
+
 		packetIterator += sizeof(NETFLOW9_FLOWSET_HEADER);
 		if (flowsetId < 256)
 		{

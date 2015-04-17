@@ -22,6 +22,7 @@
 // https://www.plixer.com/support/netflow_v9.html
 
 typedef unsigned long IPV4ADDRESS;
+
 typedef struct _IPV6ADDRESS
 {
 	unsigned long Lower1;
@@ -178,6 +179,23 @@ typedef struct _NETFLOW9_HEADER
 #define IN_PERMANENT_BYTES				85
 #define IN_PERMANENT_PKTS				86
 #define VENDOR_PROPRIETARY_8			87
+
+// Cisco specific field definitions.
+#define FRAGMENT_OFFSET					88
+#define FORWARDING_STATUS				89
+#define MPLS_PAL_RD						90
+#define MPLS_PREFIX_LEN					91
+#define SRC_TRAFFIC_INDEX				92
+#define DST_TRAFFIC_INDEX				93
+#define APPLICATION_DESCRIPTION			94
+#define APPLICATION_TAG					95
+#define APPLICATION_NAME				96
+#define postipDiffServCodePoint			98
+#define replication_factor				99
+#define DEPRECATED						100
+#define layer2packetSectionOffset		102
+#define layer2packetSectionSize			103
+#define layer2packetSectionData			104
 
 // Generic Netflow v9 flowset header.
 typedef struct _NETFLOW9_FLOWSET_HEADER
