@@ -62,11 +62,6 @@ EvoNetflowCollector::~EvoNetflowCollector()
 // Binds the Netflow collector socket to the specified port. Currently only IPv4!
 const bool EvoNetflowCollector::Bind(const int port)
 {
-	if (this->ListenSocket == INVALID_SOCKET)
-	{
-		return false;
-	}
-
 	sockaddr_in info;
 	info.sin_addr.s_addr = htonl(INADDR_ANY);
 	info.sin_family = AF_INET;
@@ -78,16 +73,18 @@ const bool EvoNetflowCollector::Bind(const int port)
 }
 
 // Starts the listener thread to listen for Netflow packets.
-const bool EvoNetflowCollector::BeginListen()
+const bool EvoNetflowCollector::BeginListen(const int port)
 {
 	if (this->ListenSocket == INVALID_SOCKET)
 	{
 		return false;
 	}
 
-	// Set a timeout on the socket so that it does not block execution infinitely.
-	unsigned long timeout = 25;
-	setsockopt(this->ListenSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(unsigned long));
+	// Attempt to bind the socket to the specified port.
+	if (!this->Bind(port))
+	{
+		return false;
+	}
 
 	// Start listening for Netflow input on a separate thread.
 	this->mRunning = true;
@@ -108,6 +105,10 @@ void EvoNetflowCollector::ListenerThread()
 {
 	sockaddr_in clientinfo;
 	char buffer[2048];
+
+	// Set a timeout on the socket so that it does not block execution infinitely.
+	unsigned long timeout = 25;
+	setsockopt(this->ListenSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(unsigned long));
 
 	while (this->mRunning)
 	{

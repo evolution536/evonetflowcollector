@@ -41,12 +41,12 @@ private:
 	std::thread mSocketThread;
 
 	void ListenerThread();
+	const bool Bind(const int port);
 public:
 	EvoNetflowCollector();
 	~EvoNetflowCollector();
 
-	const bool Bind(const int port);
-	const bool BeginListen();
+	const bool BeginListen(const int port);
 	void StopListening();
 };
 

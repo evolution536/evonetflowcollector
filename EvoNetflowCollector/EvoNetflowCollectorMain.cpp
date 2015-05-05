@@ -620,9 +620,15 @@ int main(int argc, char* argv[])
 	// Set interrupt handler to catch Ctrl+C. We need to clean up stuff first if the user signals the program.
 	signal(SIGINT, SignalHandler);
 
+	// Initialize the template cache class for Netflow v9 input.
+	v9TemplateCacheInstance = EvoNetflow9TemplateCache::GetInstance();
+
+	// Record the time of application startup.
+	startTime = std::time(NULL);
+
 	// Create UDP socket and start listening for Netflow input. The input is processed by the backend automatically.
 	EvoNetflowCollector main;
-	if (!main.Bind(portArg))
+	if (!main.BeginListen(portArg))
 	{
 		std::cout << "Failed to bind a socket to port " << portArg << " for Netflow packet listening!" << std::endl;
 		if (netflowLoggerInstance)
@@ -633,18 +639,11 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	// Initialize the template cache class for Netflow v9 input.
-	v9TemplateCacheInstance = EvoNetflow9TemplateCache::GetInstance();
-
-	// Record the time of application startup.
-	startTime = std::time(NULL);
-
 	// Start the dispatcher as well to asynchronously process Netflow input.
-	std::cout << "Listening for Netflow input on port " << portArg << "..." << std::endl;
 	eventDispatcher.FlowReceived5 = FlowReceivedCallback5;
 	eventDispatcher.FlowReceived9 = FlowReceivedCallback9;
 	eventDispatcher.StartDispatcher();
-	main.BeginListen();
+	std::cout << "Listening for Netflow input on port " << portArg << "..." << std::endl;
 
 	// Keep a loop running to process asynchronous event callbacks.
 	while (1)

@@ -1,0 +1,7 @@
+EvoNetflowCollector TODO file:
+
+- Hostname lookup;
+- IPFIX support;
+- Performance improvements;
+- IPv6 listening and parsing support;
+- More transparence for which host sent the Netflow packets.
