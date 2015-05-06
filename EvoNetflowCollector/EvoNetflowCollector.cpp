@@ -19,6 +19,7 @@
 #include "UtilityFunctions.h"
 #include "EvoNetflow9TemplateCache.h"
 #include <sstream>
+#include <iostream>
 
 #ifdef _WIN32
 	#include <Mstcpip.h>
@@ -46,7 +47,7 @@ EvoNetflowCollector::EvoNetflowCollector()
 #endif
 
 	// Create a datagram socket to listen for packets.
-	this->ListenSocket = socket(AF_INET, SOCK_DGRAM, 0);
+	this->ListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 }
 
 EvoNetflowCollector::~EvoNetflowCollector()
@@ -66,10 +67,9 @@ const bool EvoNetflowCollector::Bind(const int port)
 	info.sin_addr.s_addr = htonl(INADDR_ANY);
 	info.sin_family = AF_INET;
 	info.sin_port = htons(port);
-	const int infolen = sizeof(sockaddr_in);
 
 	// Bind the socket to listen on the configured port.
-	return bind(this->ListenSocket, (sockaddr*)&info, infolen) != SOCKET_ERROR;
+	return bind(this->ListenSocket, (sockaddr*)&info, sizeof(info)) != SOCKET_ERROR;
 }
 
 // Starts the listener thread to listen for Netflow packets.
@@ -113,7 +113,7 @@ void EvoNetflowCollector::ListenerThread()
 	while (this->mRunning)
 	{
 		// Start receiving data from the listening socket.
-		int clientinfolen = sizeof(sockaddr_in);
+		int clientinfolen = sizeof(clientinfo);
 
 #ifdef _WIN32
 		int bytesRead = recvfrom(this->ListenSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientinfo, &clientinfolen);
