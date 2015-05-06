@@ -118,7 +118,7 @@ void EvoNetflowCollector::ListenerThread()
 #ifdef _WIN32
 		int bytesRead = recvfrom(this->ListenSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientinfo, &clientinfolen);
 #else
-		int bytesRead = recvfrom(this->ListenSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientinfo, &clientinfolen);
+		int bytesRead = recvfrom(this->ListenSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientinfo, (socklen_t*)&clientinfolen);
 #endif
 		if (bytesRead > 0)
 		{
