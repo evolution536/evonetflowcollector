@@ -673,7 +673,7 @@ int main(int argc, char* argv[])
 		}
 
 		mIsReading = false;
-		std::this_thread::sleep_for(std::chrono::milliseconds(25));
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 
 	// Clean up resources and let the user know about the statistics.

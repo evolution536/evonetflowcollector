@@ -19,7 +19,6 @@
 #include "UtilityFunctions.h"
 #include "EvoNetflow9TemplateCache.h"
 #include <sstream>
-#include <iostream>
 
 #ifdef _WIN32
 	#include <Mstcpip.h>
@@ -47,7 +46,7 @@ EvoNetflowCollector::EvoNetflowCollector()
 #endif
 
 	// Create a datagram socket to listen for packets.
-	this->ListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	this->ListenSocket = socket(AF_INET, SOCK_DGRAM, 0);
 }
 
 EvoNetflowCollector::~EvoNetflowCollector()
@@ -67,9 +66,10 @@ const bool EvoNetflowCollector::Bind(const int port)
 	info.sin_addr.s_addr = htonl(INADDR_ANY);
 	info.sin_family = AF_INET;
 	info.sin_port = htons(port);
+	const int infolen = sizeof(sockaddr_in);
 
 	// Bind the socket to listen on the configured port.
-	return bind(this->ListenSocket, (sockaddr*)&info, sizeof(info)) != SOCKET_ERROR;
+	return bind(this->ListenSocket, (sockaddr*)&info, infolen) != SOCKET_ERROR;
 }
 
 // Starts the listener thread to listen for Netflow packets.
@@ -110,10 +110,18 @@ void EvoNetflowCollector::ListenerThread()
 	unsigned long timeout = 25;
 	setsockopt(this->ListenSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(unsigned long));
 
+	// Increase the receive buffer to avoid packets being dropped.
+	unsigned long buffersize = 32768;
+	setsockopt(this->ListenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&buffersize, sizeof(unsigned long));
+
+	// Decrease the size of the send buffer. We don't need it.
+	unsigned long sendbuffer = 1024;
+	setsockopt(this->ListenSocket, SOL_SOCKET, SO_SNDBUF, (char*)&sendbuffer, sizeof(unsigned long));
+
+	// Start receiving data from the listening socket.
 	while (this->mRunning)
 	{
-		// Start receiving data from the listening socket.
-		int clientinfolen = sizeof(clientinfo);
+		int clientinfolen = sizeof(sockaddr_in);
 
 #ifdef _WIN32
 		int bytesRead = recvfrom(this->ListenSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientinfo, &clientinfolen);
