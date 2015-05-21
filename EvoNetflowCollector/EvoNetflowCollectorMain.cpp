@@ -498,10 +498,11 @@ void SignalHandler(int signal)
 void FlowReceivedCallback5(const unsigned int SequenceCounter, PNETFLOW5_FLOW_RECORD const record)
 {
 	// Create output string for the processed packet.
-	std::stringstream next;
-	next << "FLOW " << SequenceCounter << ": " << Ipv4ToString(record->SourceIpAddress) << ":" << record->SourcePort << " <> "
-		<< Ipv4ToString(record->DestinationIpAddress) << ":" << record->DestinationPort << " Bytes: " << record->BytesCount
-		<< " Packets: " << record->PacketCount << " Protocol: " << ProtocolStringArray[record->Protocol];
+	std::string next;
+	next.reserve(512);
+	next = "FLOW " + std::to_string(SequenceCounter) + ": " + Ipv4ToString(record->SourceIpAddress) + ":" + std::to_string(record->SourcePort)
+		+ " <> " + Ipv4ToString(record->DestinationIpAddress) + ":" + std::to_string(record->DestinationPort) + " Bytes: " + std::to_string(record->BytesCount)
+		+ " Packets: " + std::to_string(record->PacketCount) + " Protocol: " + ProtocolStringArray[record->Protocol];
 
 	// Push the event to the queue for processing in UI thread.
 	totalBytes += record->BytesCount;
@@ -512,7 +513,7 @@ void FlowReceivedCallback5(const unsigned int SequenceCounter, PNETFLOW5_FLOW_RE
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 	mIsWriting = true;
-	mProcessedEventsQueue.push_back(next.str());
+	mProcessedEventsQueue.push_back(next);
 	mIsWriting = false;
 }
 
@@ -531,10 +532,11 @@ const char* GetNetflow9FieldResult(const std::vector<EvoNetflow9FieldValueSet>& 
 
 void FlowReceivedCallback9(const unsigned int SequenceCounter, const std::vector<EvoNetflow9FieldValueSet>& outRecords)
 {
-	std::stringstream next;
-	next << "FLOW " << SequenceCounter << ": " << GetNetflow9FieldResult(outRecords, IPV4_SRC_ADDR) << ":" << GetNetflow9FieldResult(outRecords, L4_SRC_PORT) << " <> "
-		<< GetNetflow9FieldResult(outRecords, IPV4_DST_ADDR) << ":" << GetNetflow9FieldResult(outRecords, L4_DST_PORT) << " Bytes: " << GetNetflow9FieldResult(outRecords, IN_BYTES)
-		<< " Packets: " << GetNetflow9FieldResult(outRecords, IN_PKTS) << " Protocol: " << GetNetflow9FieldResult(outRecords, PROTOCOL);
+	std::string next;
+	next.reserve(512);
+	next = "FLOW " + std::to_string(SequenceCounter) + ": " + GetNetflow9FieldResult(outRecords, IPV4_SRC_ADDR) + ":" + GetNetflow9FieldResult(outRecords, L4_SRC_PORT)
+		+ " <> " + GetNetflow9FieldResult(outRecords, IPV4_DST_ADDR) + ":" + GetNetflow9FieldResult(outRecords, L4_DST_PORT) + " Bytes: " + GetNetflow9FieldResult(outRecords, IN_BYTES)
+		+ " Packets: " + GetNetflow9FieldResult(outRecords, IN_PKTS) + " Protocol: " + GetNetflow9FieldResult(outRecords, PROTOCOL);
 
 	// Push the event to the queue for processing in UI thread.
 	std::istringstream converter(GetNetflow9FieldResult(outRecords, IN_BYTES));
@@ -548,7 +550,7 @@ void FlowReceivedCallback9(const unsigned int SequenceCounter, const std::vector
 		std::this_thread::sleep_for(std::chrono::milliseconds(10));
 	}
 	mIsWriting = true;
-	mProcessedEventsQueue.push_back(next.str());
+	mProcessedEventsQueue.push_back(next);
 	mIsWriting = false;
 }
 
