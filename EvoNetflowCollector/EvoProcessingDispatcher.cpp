@@ -74,13 +74,13 @@ void EvoProcessingDispatcher::ProcessPacket(QueuedPacketDescriptor* const pPacke
 void EvoProcessingDispatcher::StartDispatcher()
 {
 	this->_running = true;
-	std::thread dispatchThread(&EvoProcessingDispatcher::ProcessingLoop, this);
-	dispatchThread.detach();
+	this->mRunningthread = std::thread(&EvoProcessingDispatcher::ProcessingLoop, this);
 }
 
 void EvoProcessingDispatcher::StopDispatcher()
 {
 	this->_running = false;
+	this->mRunningthread.join();
 }
 
 void EvoProcessingDispatcher::ProcessingLoop()
@@ -95,6 +95,6 @@ void EvoProcessingDispatcher::ProcessingLoop()
 		}
 
 		this->mQueueCs.unlock();
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }

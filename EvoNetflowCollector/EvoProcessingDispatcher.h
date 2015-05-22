@@ -23,6 +23,7 @@
 #include <functional>
 #include <mutex>
 #include <vector>
+#include <thread>
 
 union UNIVERSAL_IPADDRESS
 {
@@ -57,6 +58,7 @@ private:
 	std::deque<QueuedPacketDescriptor> mQueuedPackets;
 	bool _running;
 	std::mutex mQueueCs;
+	std::thread mRunningthread;
 
 	void ProcessPacket(QueuedPacketDescriptor* const pPacket);
 	void ProcessingLoop();

@@ -12,3 +12,4 @@ EvoNetflowCollector/.deps/*
 *.m4
 *.o
 *.log
+*.vsp

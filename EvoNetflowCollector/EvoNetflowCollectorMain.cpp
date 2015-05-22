@@ -39,6 +39,7 @@ extern EvoProcessingDispatcher eventDispatcher;
 NetflowLogger* netflowLoggerInstance = NULL;
 extern EvoNetflow9TemplateCache* v9TemplateCacheInstance;
 
+bool debuggingMode = false;
 unsigned int totalFlows = 0;
 unsigned long long totalBytes = 0;
 std::time_t startTime;
@@ -483,7 +484,12 @@ void FinalizeProgram()
 	std::cout << "Shutting down collector." << std::endl;
 
 	// Clean up used resources.
-	delete netflowLoggerInstance;
+	if (netflowLoggerInstance)
+	{
+		delete netflowLoggerInstance;
+		netflowLoggerInstance = NULL;
+	}
+
 	eventDispatcher.StopDispatcher();
 }
 
@@ -498,11 +504,36 @@ void SignalHandler(int signal)
 void FlowReceivedCallback5(const unsigned int SequenceCounter, PNETFLOW5_FLOW_RECORD const record)
 {
 	// Create output string for the processed packet.
-	std::string next;
-	next.reserve(512);
-	next = "FLOW " + std::to_string(SequenceCounter) + ": " + Ipv4ToString(record->SourceIpAddress) + ":" + std::to_string(record->SourcePort)
-		+ " <> " + Ipv4ToString(record->DestinationIpAddress) + ":" + std::to_string(record->DestinationPort) + " Bytes: " + std::to_string(record->BytesCount)
-		+ " Packets: " + std::to_string(record->PacketCount) + " Protocol: " + ProtocolStringArray[record->Protocol];
+	char buffer[512];
+	int strLength = 5;
+	memcpy(buffer, "FLOW ", 5);
+	strLength += itoa_custom(SequenceCounter, buffer + strLength, 10);
+	*(unsigned short*)(buffer + strLength) = 0x203A;
+	strLength += sizeof(unsigned short);
+	std::string nextIpRet = Ipv4ToString(record->SourceIpAddress);
+	memcpy(buffer + strLength, nextIpRet.c_str(), nextIpRet.length());
+	strLength += nextIpRet.length();
+	buffer[strLength++] = 0x3A;
+	strLength += itoa_custom(record->SourcePort, buffer + strLength, 10);
+	*(unsigned long*)(buffer + strLength) = 0x203E3C20;
+	strLength += sizeof(unsigned long);
+	nextIpRet = Ipv4ToString(record->DestinationIpAddress);
+	memcpy(buffer + strLength, nextIpRet.c_str(), nextIpRet.length());
+	strLength += nextIpRet.length();
+	buffer[strLength++] = 0x3A;
+	strLength += itoa_custom(record->DestinationPort, buffer + strLength, 10);
+	memcpy(buffer + strLength, " Bytes: ", 8);
+	strLength += 8;
+	strLength += itoa_custom(record->BytesCount, buffer + strLength, 10);
+	memcpy(buffer + strLength, " Packets: ", 10);
+	strLength += 10;
+	strLength += itoa_custom(record->PacketCount, buffer + strLength, 10);
+	memcpy(buffer + strLength, " Protocol: ", 11);
+	strLength += 11;
+	const char* protocolStr = ProtocolStringArray[record->Protocol];
+	memcpy(buffer + strLength, protocolStr, strlen(protocolStr));
+	strLength += 3;
+	buffer[strLength] = 0;
 
 	// Push the event to the queue for processing in UI thread.
 	totalBytes += record->BytesCount;
@@ -510,10 +541,10 @@ void FlowReceivedCallback5(const unsigned int SequenceCounter, PNETFLOW5_FLOW_RE
 	// Add the Netflow line to the queue for log processing.
 	while (mIsReading)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	mIsWriting = true;
-	mProcessedEventsQueue.push_back(next);
+	mProcessedEventsQueue.push_back(std::string(buffer));
 	mIsWriting = false;
 }
 
@@ -547,7 +578,7 @@ void FlowReceivedCallback9(const unsigned int SequenceCounter, const std::vector
 	// Add the Netflow line to the queue for log processing.
 	while (mIsReading)
 	{
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 	mIsWriting = true;
 	mProcessedEventsQueue.push_back(next);
@@ -592,11 +623,16 @@ int main(int argc, char* argv[])
 				logFileArg = argv[i + 1];
 			}
 		}
+
+		// Check for the debug mode option.
+		if (strcmp(argv[i], "-D") == 0)
+		{
+			debuggingMode = true;
+		}
 	}
 
 	// Display help and exit the program. If the port is 0, meaning no port was entered, display the help as well.
-	const bool isFile = loggingMethod.compare("file") == 0;
-	if (helpArg || !portArg || (isFile && logFileArg.empty()))
+	if (helpArg || !portArg || (!debuggingMode && loggingMethod.empty()))
 	{
 		std::cout << "Example: EvoNetflowCollector -p 9995" << std::endl;
 		std::cout << std::endl << "Usage:" << std::endl << std::endl;
@@ -604,11 +640,12 @@ int main(int argc, char* argv[])
 		std::cout << "-p, --port <port>\t\tSets the UDP port to listen on. Must be greater than 0." << std::endl;
 		std::cout << "-l, --logging <method>\t\tSets the method of Netflow logging. Example: file" << std::endl;
 		std::cout << "-o, --outfile <file>\t\tSets the output file that Netflow will be written to." << std::endl;
+		std::cout << "-D\t\t\t\tOutputs flows to stdout (Debugging purposes)." << std::endl;
 		return 0;
 	}
 
 	// Start up the logging method. If no logging method was found, output is dumped only to standard output.
-	if (isFile)
+	if (loggingMethod.compare("file") == 0)
 	{
 		netflowLoggerInstance = new NetflowFileLogger(logFileArg.c_str());
 		if (!netflowLoggerInstance->IsReady())
@@ -652,7 +689,7 @@ int main(int argc, char* argv[])
 	{
 		while (mIsWriting)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 		mIsReading = true;
 
@@ -663,7 +700,12 @@ int main(int argc, char* argv[])
 
 			// Process the next event in the queue.
 			const std::string& str = mProcessedEventsQueue.front();
-			std::cout << str << std::endl;
+
+			// If the debug mode argument was specified, write flows to stdout. Has a huge impact on the performance.
+			if (debuggingMode)
+			{
+				std::cout << str << std::endl;
+			}
 
 			// Write the row of netflow to the logger.
 			if (netflowLoggerInstance)
@@ -675,7 +717,7 @@ int main(int argc, char* argv[])
 		}
 
 		mIsReading = false;
-		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 
 	// Clean up resources and let the user know about the statistics.
