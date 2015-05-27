@@ -297,7 +297,7 @@ const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigne
 			outVal << (((int)*fieldVal == 6) ? "IPv6" : "IPv4");
 			return true;
 		case PROTOCOL:
-			if ((int)*fieldVal < (int)_countof(ProtocolStringArray))
+			if ((int)*fieldVal > 0 && (int)*fieldVal < (int)_countof(ProtocolStringArray))
 			{
 				outVal << ProtocolStringArray[(int)*fieldVal];
 				return true;

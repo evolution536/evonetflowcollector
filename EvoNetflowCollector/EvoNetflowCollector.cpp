@@ -46,7 +46,7 @@ EvoNetflowCollector::EvoNetflowCollector()
 #endif
 
 	// Create a datagram socket to listen for packets.
-	this->ListenSocket = socket(AF_INET, SOCK_DGRAM, 0);
+	this->ListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 }
 
 EvoNetflowCollector::~EvoNetflowCollector()
@@ -103,11 +103,11 @@ void EvoNetflowCollector::StopListening()
 // Internal listener function, runs asynchronously.
 void EvoNetflowCollector::ListenerThread()
 {
-	sockaddr_in clientinfo;
+	sockaddr_storage clientinfo;
 	char buffer[2048];
 
 	// Set a timeout on the socket so that it does not block execution infinitely.
-	unsigned long timeout = 25;
+	unsigned long timeout = 10;
 	setsockopt(this->ListenSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(unsigned long));
 
 	// Increase the receive buffer to avoid packets being dropped.
@@ -121,7 +121,7 @@ void EvoNetflowCollector::ListenerThread()
 	// Start receiving data from the listening socket.
 	while (this->mRunning)
 	{
-		int clientinfolen = sizeof(sockaddr_in);
+		int clientinfolen = sizeof(clientinfo);
 
 #ifdef _WIN32
 		int bytesRead = recvfrom(this->ListenSocket, buffer, sizeof(buffer), 0, (sockaddr*)&clientinfo, &clientinfolen);
@@ -136,9 +136,9 @@ void EvoNetflowCollector::ListenerThread()
 			QueuedPacketDescriptor desc(safeBuffer, bytesRead);
 
 #ifdef _WIN32
-			desc.GeneratorIpAddress.IpAddress4 = clientinfo.sin_addr.S_un.S_addr;
+			desc.GeneratorIpAddress.IpAddress4 = ((sockaddr_in*)&clientinfo)->sin_addr.S_un.S_addr;
 #else
-			desc.GeneratorIpAddress.IpAddress4 = clientinfo.sin_addr.s_addr;
+			desc.GeneratorIpAddress.IpAddress4 = ((sockaddr_in*)&clientinfo)->sin_addr.s_addr;
 #endif
 			// IPv6 connections, still need to implement it!
 			eventDispatcher.QueuePacket(&desc);
