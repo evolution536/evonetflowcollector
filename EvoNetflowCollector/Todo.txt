@@ -1,7 +1,10 @@
 EvoNetflowCollector TODO file:
 
+- Take WSAEMSGSIZE into account, if the receive buffer is not big enough;
+- data read from socket, is this always just 'a packet'?
 - Hostname lookup;
 - IPFIX support;
 - Performance improvements;
 - IPv6 listening and parsing support;
 - More transparence for which host sent the Netflow packets.
+- Extensible output (Elasticsearch f.e.)

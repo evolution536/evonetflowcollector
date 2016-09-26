@@ -41,12 +41,22 @@ EvoNetflowCollector::EvoNetflowCollector()
 	this->mRunning = false;
 
 #ifdef _WIN32
+	// Running in Windows, we need to initiate WinSock.
 	WSADATA wsaData;
-	WSAStartup(MAKEWORD(2, 2), &wsaData);
-#endif
-
+	int wsaReturn = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (wsaReturn != 0)
+	{
+		this->ListenSocket = NULL;
+	}
+	else
+	{
+		// Create a datagram socket to listen for packets.
+		this->ListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	}
+#else
 	// Create a datagram socket to listen for packets.
 	this->ListenSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+#endif
 }
 
 EvoNetflowCollector::~EvoNetflowCollector()
@@ -75,6 +85,15 @@ const bool EvoNetflowCollector::Bind(const int port)
 // Starts the listener thread to listen for Netflow packets.
 const bool EvoNetflowCollector::BeginListen(const int port)
 {
+#ifdef _WIN32
+	// If running on Windows, check whether WSA initialized succesfully.
+	if (!this->ListenSocket)
+	{
+		return false;
+	}
+#endif
+
+	// The socket has failed to initialize.
 	if (this->ListenSocket == INVALID_SOCKET)
 	{
 		return false;
@@ -97,6 +116,8 @@ const bool EvoNetflowCollector::BeginListen(const int port)
 void EvoNetflowCollector::StopListening()
 {
 	this->mRunning = false;
+
+	// Wait for the listener thread to finish before finalizing the application.
 	this->mSocketThread.join();
 }
 
@@ -107,11 +128,11 @@ void EvoNetflowCollector::ListenerThread()
 	char buffer[2048];
 
 	// Set a timeout on the socket so that it does not block execution infinitely.
-	unsigned long timeout = 10;
+	unsigned long timeout = 25;
 	setsockopt(this->ListenSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(unsigned long));
 
 	// Increase the receive buffer to avoid packets being dropped.
-	unsigned long buffersize = 32768;
+	unsigned long buffersize = 65536;
 	setsockopt(this->ListenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&buffersize, sizeof(unsigned long));
 
 	// Decrease the size of the send buffer. We don't need it.
