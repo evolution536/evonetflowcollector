@@ -43,6 +43,8 @@ void EvoProcessingDispatcher::QueuePacket(QueuedPacketDescriptor* const pPacket)
 void EvoProcessingDispatcher::ProcessPacket(QueuedPacketDescriptor* const pPacket)
 {
 	const int netflowVersion = CheckNetflowPacketVersion(pPacket->PacketBuffer);
+
+	// Netflow v5 packet.
 	if (netflowVersion == 5)
 	{
 		std::vector<NETFLOW5_FLOW_RECORD> flows;
@@ -55,6 +57,7 @@ void EvoProcessingDispatcher::ProcessPacket(QueuedPacketDescriptor* const pPacke
 			}
 		}
 	}
+	// Netflow v9 packet.
 	else if (netflowVersion == 9)
 	{
 		std::vector<std::vector<EvoNetflow9FieldValueSet>> flows;
@@ -66,6 +69,11 @@ void EvoProcessingDispatcher::ProcessPacket(QueuedPacketDescriptor* const pPacke
 				this->FlowReceived9(sequenceNumbers[i], flows[i]);
 			}
 		}
+	}
+	// IPFIX packet.
+	else if (netflowVersion == 10)
+	{
+
 	}
 
 	delete[] pPacket->PacketBuffer;

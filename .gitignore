@@ -5,6 +5,7 @@ EvoNetflowCollector/autom4te.cache/*
 EvoNetflowCollector/Debug/*
 EvoNetflowCollector/Release/*
 EvoNetflowCollector/.deps/*
+.vs/*
 *.opensdf
 *.sdf
 *.user

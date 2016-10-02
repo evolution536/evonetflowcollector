@@ -54,5 +54,6 @@ const int CheckNetflowPacketVersion(const char* buffer);
 const bool ParseNetflow5Packet(const QueuedPacketDescriptor* buffer, std::vector<unsigned int>& outSequences, std::vector<NETFLOW5_FLOW_RECORD>& outRecords);
 const bool ProcessNetflow9FieldValue(const unsigned int fieldType, const unsigned int fieldLength, const char* fieldVal, std::stringstream& outVal);
 const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector<unsigned int>& outSequences, std::vector<std::vector<EvoNetflow9FieldValueSet>>& outRecords);
+const bool ParseIpFixPacket(const QueuedPacketDescriptor* buffer, std::vector<unsigned int>& outSequences, std::vector<std::vector<EvoNetflow9FieldValueSet>>& outRecords);
 
 #endif

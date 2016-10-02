@@ -381,3 +381,9 @@ const bool ParseNetflow9Packet(const QueuedPacketDescriptor* buffer, std::vector
 
 	return true;
 }
+
+// Parses an IPFIX packet, handles templates and returns the flows inside of the packet.
+const bool ParseIpFixPacket(const QueuedPacketDescriptor* buffer, std::vector<unsigned int>& outSequences, std::vector<std::vector<EvoNetflow9FieldValueSet>>& outRecords)
+{
+	return true;
+}
