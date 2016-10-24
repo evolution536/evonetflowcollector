@@ -45,9 +45,9 @@ const bool NetflowFileLogger::WriteNetflow1Record(const Netflow1Storage* const r
 	// Create a string representation of the v1 flow information.
 	StringBuffer buf;
 	buf.Reserve(128);
-	buf << TimeFromUTC(record->TimeStamp) << " FLOW v1 #" << record->FlowSequence << ": " << Ipv4ToString(record->FlowStorage.SourceIpAddress)
-		<< ":" << record->FlowStorage.SourcePort << " <> " << Ipv4ToString(record->FlowStorage.DestinationIpAddress) << ":" << record->FlowStorage.DestinationPort
-		<< " Protocol: " << NetflowParser::GetProtocolStringFromNumber(record->FlowStorage.Protocol) << " Bytes: " << record->FlowStorage.BytesCount
+	buf << TimeFromUTC(record->TimeStamp) << " FLOW v1: " << Ipv4ToString(record->FlowStorage.SourceIpAddress) << ":" << record->FlowStorage.SourcePort
+		<< " <> " << Ipv4ToString(record->FlowStorage.DestinationIpAddress) << ":" << record->FlowStorage.DestinationPort << " Protocol: "
+		<< NetflowParser::GetProtocolStringFromNumber(record->FlowStorage.Protocol) << " Bytes: " << record->FlowStorage.BytesCount
 		<< " Packets: " << record->FlowStorage.PacketCount;
 	
 	// Write processed Netflow information as a string to the file.
@@ -84,6 +84,24 @@ const bool NetflowFileLogger::WriteNetflow5Record(const Netflow5Storage* const r
 // Writes a row of Netflow v7 data to the opened log file.
 const bool NetflowFileLogger::WriteNetflow7Record(const Netflow7Storage* const record)
 {
+	// If the file is not open, return false.
+	if (!this->logFile.IsOpen())
+	{
+		return false;
+	}
+	
+	// Create a string representation of the v5 flow information.
+	StringBuffer buf;
+	buf.Reserve(128);
+	buf << TimeFromUTC(record->TimeStamp) << " FLOW v7 #" << record->FlowSequence << ": " << Ipv4ToString(record->FlowStorage.SourceIpAddress)
+		<< ":" << record->FlowStorage.SourcePort << " <> " << Ipv4ToString(record->FlowStorage.DestinationIpAddress) << ":" << record->FlowStorage.DestinationPort
+		<< " Protocol: " << NetflowParser::GetProtocolStringFromNumber(record->FlowStorage.Protocol) << " Bytes: " << record->FlowStorage.BytesCount
+		<< " Packets: " << record->FlowStorage.PacketCount;
+	
+	// Write processed Netflow information as a string to the file.
+	String s = buf;
+	this->logFile.PutLine(s);
+
 	return true;
 }
 

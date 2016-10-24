@@ -73,7 +73,9 @@ private:
 	
 	typedef NetflowParser CLASSNAME;
 	
+	void ParseNetflow1Packet(const char* packet, const unsigned int length);
 	void ParseNetflow5Packet(const char* packet, const unsigned int length);
+	void ParseNetflow7Packet(const char* packet, const unsigned int length);
 	void ParseNetflow9Packet(const char* packet, const unsigned int length);
 	void ParseIPFIXPacket(const char* packet, const unsigned int length);
 public:

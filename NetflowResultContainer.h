@@ -34,9 +34,6 @@ struct Netflow1Storage : Moveable<Netflow1Storage>
 	// The timestamp of the flow.
 	unsigned long TimeStamp;
 	
-	// The flow sequence number.
-	unsigned long FlowSequence;
-	
 	// The flow record.
 	NETFLOW1_FLOW_RECORD FlowStorage;
 };
@@ -57,6 +54,9 @@ struct Netflow5Storage : Moveable<Netflow5Storage>
 // Represents a Netflow v7 storage structure that includes the sequence number.
 struct Netflow7Storage : Moveable<Netflow7Storage>
 {
+	// The timestamp of the flow.
+	unsigned long TimeStamp;
+	
 	// The flow sequence number.
 	unsigned long FlowSequence;
 	
@@ -82,13 +82,19 @@ class NetflowResultContainer
 {
 private:
 	// Back buffer size variables.
+	unsigned int mv1BufferSize;
 	unsigned int mv5BufferSize;
+	unsigned int mv7BufferSize;
 	
 	// Back buffer definitions.
+	Netflow1Storage* mv1BackBuffer;
 	Netflow5Storage* mv5BackBuffer;
+	Netflow7Storage* mv7BackBuffer;
 	
 	// Critical sections matching the back buffers.
+	CriticalSection mv1CS;
 	CriticalSection mv5CS;
+	CriticalSection mv7CS;
 	
 	unsigned int mDroppedFlows;
 	
@@ -107,11 +113,18 @@ public:
 	const unsigned int GetDroppedFlowCount() const;
 	
 	// Retrieval functions.
+	const unsigned int GetNetflow1BackBufferSize() const;
 	const unsigned int GetNetflow5BackBufferSize() const;
+	const unsigned int GetNetflow7BackBufferSize() const;
+	
+	const unsigned int GetNetflow1BackBuffer(Vector<Netflow1Storage>& frontBuffer);
 	const unsigned int GetNetflow5BackBuffer(Vector<Netflow5Storage>& frontBuffer);
+	const unsigned int GetNetflow7BackBuffer(Vector<Netflow7Storage>& frontBuffer);
 	
 	// Push functions.
+	const unsigned int PushNetflow1Flows(const Vector<Netflow1Storage>& flows);
 	const unsigned int PushNetflow5Flows(const Vector<Netflow5Storage>& flows);
+	const unsigned int PushNetflow7Flows(const Vector<Netflow7Storage>& flows);
 };
 
 #endif

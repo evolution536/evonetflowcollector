@@ -141,9 +141,9 @@ void FinalizeProgram()
 void DebugOutputNetflow1(const Netflow1Storage* const flow)
 {
 	// Output flow to the console.
-	Cout() << TimeFromUTC(flow->TimeStamp) << " FLOW v1 #" << flow->FlowSequence << ": " << Ipv4ToString(flow->FlowStorage.SourceIpAddress)
-		<< ":" << flow->FlowStorage.SourcePort << " <> " << Ipv4ToString(flow->FlowStorage.DestinationIpAddress) << ":" << flow->FlowStorage.DestinationPort
-		<< " Protocol: " << NetflowParser::GetProtocolStringFromNumber(flow->FlowStorage.Protocol) << " Bytes: " << flow->FlowStorage.BytesCount
+	Cout() << TimeFromUTC(flow->TimeStamp) << " FLOW v1: " << Ipv4ToString(flow->FlowStorage.SourceIpAddress) << ":" << flow->FlowStorage.SourcePort
+		<< " <> " << Ipv4ToString(flow->FlowStorage.DestinationIpAddress) << ":" << flow->FlowStorage.DestinationPort << " Protocol: "
+		<< NetflowParser::GetProtocolStringFromNumber(flow->FlowStorage.Protocol) << " Bytes: " << flow->FlowStorage.BytesCount
 		<< " Packets: " << flow->FlowStorage.PacketCount << "\n";
 }
 
@@ -152,6 +152,16 @@ void DebugOutputNetflow5(const Netflow5Storage* const flow)
 {
 	// Output flow to the console.
 	Cout() << TimeFromUTC(flow->TimeStamp) << " FLOW v5 #" << flow->FlowSequence << ": " << Ipv4ToString(flow->FlowStorage.SourceIpAddress)
+		<< ":" << flow->FlowStorage.SourcePort << " <> " << Ipv4ToString(flow->FlowStorage.DestinationIpAddress) << ":" << flow->FlowStorage.DestinationPort
+		<< " Protocol: " << NetflowParser::GetProtocolStringFromNumber(flow->FlowStorage.Protocol) << " Bytes: " << flow->FlowStorage.BytesCount
+		<< " Packets: " << flow->FlowStorage.PacketCount << "\n";
+}
+
+// Writes Netflow v7 debug output for a specified flow.
+void DebugOutputNetflow7(const Netflow7Storage* const flow)
+{
+	// Output flow to the console.
+	Cout() << TimeFromUTC(flow->TimeStamp) << " FLOW v7 #" << flow->FlowSequence << ": " << Ipv4ToString(flow->FlowStorage.SourceIpAddress)
 		<< ":" << flow->FlowStorage.SourcePort << " <> " << Ipv4ToString(flow->FlowStorage.DestinationIpAddress) << ":" << flow->FlowStorage.DestinationPort
 		<< " Protocol: " << NetflowParser::GetProtocolStringFromNumber(flow->FlowStorage.Protocol) << " Bytes: " << flow->FlowStorage.BytesCount
 		<< " Packets: " << flow->FlowStorage.PacketCount << "\n";
@@ -261,14 +271,44 @@ CONSOLE_APP_MAIN
 	// Keep a loop running to process asynchronous event callbacks.
 	while (appRunning)
 	{
+		// Poll the back buffers for processed Netflow v1 flows.
+		if (GlobalResultContainer->GetNetflow1BackBufferSize() > 0)
+		{
+			// There are v5 flows in the back buffer. Retrieve them and submit them to output.
+			Vector<Netflow1Storage> localFlows;
+			const unsigned int flowCount = GlobalResultContainer->GetNetflow1BackBuffer(localFlows);
+			
+			// Output v5 flows to the logger.
+			for (unsigned int i = 0; i < flowCount; ++i)
+			{
+				// If debug mode was activated, write output to the console.
+				if (cmdParser.GetWasDebuggingMode())
+				{
+					DebugOutputNetflow1(&localFlows[i]);
+				}
+				
+				// If a logger was instantiated, push Netflow to the logger.
+				if (GlobalNetflowLogger)
+				{
+					GlobalNetflowLogger->WriteNetflow1Record(&localFlows[i]);
+				}
+				
+				// Increment the bytes counter.
+				GlobalCollector.TotalBytes += localFlows[i].FlowStorage.BytesCount;
+			}
+			
+			// Increment the processed flow counter.
+			GlobalCollector.TotalFlows += flowCount;
+		}
+		
 		// Poll the back buffers for processed Netflow v5 flows.
 		if (GlobalResultContainer->GetNetflow5BackBufferSize() > 0)
 		{
-			// There are flows in the back buffer. Retrieve them and submit them to output.
+			// There are v5 flows in the back buffer. Retrieve them and submit them to output.
 			Vector<Netflow5Storage> localFlows;
 			const unsigned int flowCount = GlobalResultContainer->GetNetflow5BackBuffer(localFlows);
 			
-			// Output flows to the logger.
+			// Output v5 flows to the logger.
 			for (unsigned int i = 0; i < flowCount; ++i)
 			{
 				// If debug mode was activated, write output to the console.
@@ -281,6 +321,36 @@ CONSOLE_APP_MAIN
 				if (GlobalNetflowLogger)
 				{
 					GlobalNetflowLogger->WriteNetflow5Record(&localFlows[i]);
+				}
+				
+				// Increment the bytes counter.
+				GlobalCollector.TotalBytes += localFlows[i].FlowStorage.BytesCount;
+			}
+			
+			// Increment the processed flow counter.
+			GlobalCollector.TotalFlows += flowCount;
+		}
+		
+		// Poll the back buffers for processed Netflow v7 flows.
+		if (GlobalResultContainer->GetNetflow7BackBufferSize() > 0)
+		{
+			// There are v5 flows in the back buffer. Retrieve them and submit them to output.
+			Vector<Netflow7Storage> localFlows;
+			const unsigned int flowCount = GlobalResultContainer->GetNetflow7BackBuffer(localFlows);
+			
+			// Output v5 flows to the logger.
+			for (unsigned int i = 0; i < flowCount; ++i)
+			{
+				// If debug mode was activated, write output to the console.
+				if (cmdParser.GetWasDebuggingMode())
+				{
+					DebugOutputNetflow7(&localFlows[i]);
+				}
+				
+				// If a logger was instantiated, push Netflow to the logger.
+				if (GlobalNetflowLogger)
+				{
+					GlobalNetflowLogger->WriteNetflow7Record(&localFlows[i]);
 				}
 				
 				// Increment the bytes counter.
