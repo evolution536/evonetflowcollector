@@ -1,0 +1,39 @@
+description "Netflow collection application for Netflow v5, v9 and IPFIX.\377";
+
+uses
+	Core;
+
+file
+	TODO.txt,
+	Netflow readonly separator,
+	EvoNetflow.h,
+	IPFIX.h,
+	Netflow9.h,
+	Netflow7.h,
+	Netflow5.h,
+	Netflow1.h,
+	Application readonly separator,
+	GlobalDefinitions.h,
+	UtilityFunctions.cpp,
+	UtilityFunctions.h,
+	CommandLineArgumentParser.h,
+	CommandLineArgumentParser.cpp,
+	EvoNetflowCollector.cpp,
+	EvoNetflowCollector.h,
+	NetflowCollector.cpp,
+	NetflowCollector.h,
+	NetflowParser.cpp,
+	NetflowParser.h,
+	NetflowResultContainer.cpp,
+	NetflowResultContainer.h,
+	TemplateCache.cpp,
+	TemplateCache.h,
+	Loggers readonly separator,
+	NetflowLogger.cpp,
+	NetflowLogger.h,
+	NetflowFileLogger.cpp,
+	NetflowFileLogger.h;
+
+mainconfig
+	"" = "MT SSE2 NOI18N";
+

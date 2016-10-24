@@ -1,3 +1,5 @@
+# New Version under construction
+
 # Evo Netflow Collector
 
 This is a command line Netflow collector application that collects and dumps Netflow traffic that is sent via UDP. Can dump Netflow to standard output or a file. More options are to come. Currently supports Netflow v5 and v9 and runs on Windows and Linux.

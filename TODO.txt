@@ -1,0 +1,17 @@
+Evo Netflow Collector - TODO list:
+
+- Test with full blown Paessler generator;
+- Sequence numbers for flows!
+	- Track missed flows:
+	http://www.cisco.com/c/en/us/td/docs/net_mgmt/netflow_collection_engine/3-6/user/guide/format.html
+- Also Netflow v1 and v7?
+- Double buffering for queueing;
+- Exporter IP-address:
+	- More transparence for which host sent the Netflow packets.
+- Performance improvements;
+- IPv6 listening support;
+- Extensible output (Elasticsearch f.e.);
+- Possibility to apply filters in processing:
+	- GeoIP lookup;
+	- Hostname lookup;
+	- CIDR classification;
