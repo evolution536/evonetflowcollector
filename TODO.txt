@@ -1,6 +1,7 @@
 Evo Netflow Collector - TODO list:
 
 - Test with full blown Paessler generator;
+- Replace 'reserve' of Vector with a thread-local pre-allocated storage;
 - Sequence numbers for flows!
 	- Track missed flows:
 	http://www.cisco.com/c/en/us/td/docs/net_mgmt/netflow_collection_engine/3-6/user/guide/format.html

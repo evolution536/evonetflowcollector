@@ -32,7 +32,9 @@ file
 	NetflowLogger.cpp,
 	NetflowLogger.h,
 	NetflowFileLogger.cpp,
-	NetflowFileLogger.h;
+	NetflowFileLogger.h,
+	NetflowNullLogger.cpp,
+	NetflowNullLogger.h;
 
 mainconfig
 	"" = "MT SSE2 NOI18N";

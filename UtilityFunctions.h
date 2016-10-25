@@ -24,10 +24,6 @@ using namespace Upp;
 
 #include "EvoNetflow.h"
 
-// Swaps bytes of primitive data types to read big endian data.
-template <typename T>
-const T SwapBytes(const T* a);
-
 // Converts a MAC address to its string representation.
 String MacAddressToString(const unsigned char addr[6]);
 

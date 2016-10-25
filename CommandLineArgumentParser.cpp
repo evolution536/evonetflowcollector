@@ -23,7 +23,7 @@ const String CommandLineArgumentParser::GetHelpOutput()
 {
 	return "Example: EvoNetflowCollector -p 9995 -D\n\nUsage:\n\n?, -h, --help\t\t\tDisplays this help information.\n"\
 	"-p, --port <port>\t\tSets the UDP port to listen on. Must be greater than 0.\n-l, --logging <method>\t\t"\
-	"Method of logging. Example: file\n-o, --outfile <file>\t\tSets the output file that Netflow will be written to.\n"\
+	"Method of logging. One of: file null\n-o, --outfile <file>\t\tSets the output file that Netflow will be written to.\n"\
 	"-D, --debug\t\t\tOutputs flows to stdout (Debugging purposes, logging method is optional).\n";
 }
 
@@ -57,6 +57,10 @@ const LoggingMethod CommandLineArgumentParser::ParseLoggingMethod(const String& 
 	if (str == "file")
 	{
 		return LOGGING_METHOD_FILE;
+	}
+	else if (str == "null")
+	{
+		return LOGGING_METHOD_NULL;
 	}
 	else
 	{

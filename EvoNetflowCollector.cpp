@@ -21,6 +21,7 @@
 #include "CommandLineArgumentParser.h"
 #include "GlobalDefinitions.h"
 #include "NetflowFileLogger.h"
+#include "NetflowNullLogger.h"
 #include "NetflowCollector.h"
 #include "NetflowParser.h"
 #include "UtilityFunctions.h"
@@ -212,7 +213,7 @@ CONSOLE_APP_MAIN
 	
 	// Display help and exit the program. If the port is 0, meaning no port was entered, display the help as well.
 	if (cmdParser.GetWasHelpRequested() || !cmdParser.GetPortArgument() || (!cmdParser.GetWasDebuggingMode()
-		&& (cmdParser.GetLoggingMethod() == LOGGING_METHOD_UNDEFINED || cmdParser.GetLogFileArgument().IsEmpty())))
+		&& (cmdParser.GetLoggingMethod() == LOGGING_METHOD_UNDEFINED)))
 	{
 		Cout() << CommandLineArgumentParser::GetHelpOutput();
 		return;
@@ -221,8 +222,20 @@ CONSOLE_APP_MAIN
 	// If any logging method was specified, initialize it.
 	if (cmdParser.GetLoggingMethod() == LOGGING_METHOD_FILE)
 	{
+		if (cmdParser.GetLogFileArgument().IsEmpty())
+		{
+			// No filename was specified!
+			Cout() << "Please specify an output filename using the -o <filename> argument!\n";
+			return;
+		}
+		
 		// Initialize file logger.
 		GlobalNetflowLogger = new NetflowFileLogger(cmdParser.GetLogFileArgument());
+	}
+	else if (cmdParser.GetLoggingMethod() == LOGGING_METHOD_NULL)
+	{
+		// Initialize null logger.
+		GlobalNetflowLogger = new NetflowNullLogger();
 	}
 	
 	// Check if the logger was succesfully initialized.

@@ -266,7 +266,7 @@ void NetflowParser::ParseNetflow1Packet(const char* packet, const unsigned int l
 #ifdef _WIN32
 		// Build in a safeguard for the flow count, in case we run into a corrupt packet.
 		// The flow count makes sure we don't run out of our buffer.
-		const unsigned short flowCount = SwapBytes(&nfHeader->FlowCount);
+		const unsigned short flowCount = _byteswap_ushort(nfHeader->FlowCount);
 		if (flowCount <= 24)
 		{
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
@@ -276,21 +276,21 @@ void NetflowParser::ParseNetflow1Packet(const char* packet, const unsigned int l
 			for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
 			{
 				Netflow1Storage& newRecord = outRecords.Add();
-				newRecord.TimeStamp = SwapBytes(&nfHeader->UnixSeconds);
+				newRecord.TimeStamp = _byteswap_ulong(nfHeader->UnixSeconds);
 				newRecord.FlowStorage.SourceIpAddress = flowRecord->SourceIpAddress;
 				newRecord.FlowStorage.DestinationIpAddress = flowRecord->DestinationIpAddress;
 				newRecord.FlowStorage.NextHop = flowRecord->NextHop;
-				newRecord.FlowStorage.InputSnmp = SwapBytes(&flowRecord->InputSnmp);
-				newRecord.FlowStorage.OutputSnmp = SwapBytes(&flowRecord->OutputSnmp);
-				newRecord.FlowStorage.PacketCount = SwapBytes(&flowRecord->PacketCount);
-				newRecord.FlowStorage.BytesCount = SwapBytes(&flowRecord->BytesCount);
-				newRecord.FlowStorage.SysUptimeFirst = SwapBytes(&flowRecord->SysUptimeFirst);
-				newRecord.FlowStorage.SysUptimeLast = SwapBytes(&flowRecord->SysUptimeLast);
-				newRecord.FlowStorage.SourcePort = SwapBytes(&flowRecord->SourcePort);
-				newRecord.FlowStorage.DestinationPort = SwapBytes(&flowRecord->DestinationPort);
-				newRecord.FlowStorage.TcpFlags = SwapBytes(&flowRecord->TcpFlags);
-				newRecord.FlowStorage.Protocol = SwapBytes(&flowRecord->Protocol);
-				newRecord.FlowStorage.IpTypeOfService = SwapBytes(&flowRecord->IpTypeOfService);
+				newRecord.FlowStorage.InputSnmp = _byteswap_ushort(flowRecord->InputSnmp);
+				newRecord.FlowStorage.OutputSnmp = _byteswap_ushort(flowRecord->OutputSnmp);
+				newRecord.FlowStorage.PacketCount = _byteswap_ulong(flowRecord->PacketCount);
+				newRecord.FlowStorage.BytesCount = _byteswap_ulong(flowRecord->BytesCount);
+				newRecord.FlowStorage.SysUptimeFirst = _byteswap_ulong(flowRecord->SysUptimeFirst);
+				newRecord.FlowStorage.SysUptimeLast = _byteswap_ulong(flowRecord->SysUptimeLast);
+				newRecord.FlowStorage.SourcePort = _byteswap_ushort(flowRecord->SourcePort);
+				newRecord.FlowStorage.DestinationPort = _byteswap_ushort(flowRecord->DestinationPort);
+				newRecord.FlowStorage.TcpFlags = flowRecord->TcpFlags;
+				newRecord.FlowStorage.Protocol = flowRecord->Protocol;
+				newRecord.FlowStorage.IpTypeOfService = flowRecord->IpTypeOfService;
 			}
 		}		
 #else
@@ -324,13 +324,13 @@ void NetflowParser::ParseNetflow5Packet(const char* packet, const unsigned int l
 		// Retrieve flows from the packet.
 		const PNETFLOW5_HEADER nfHeader = (PNETFLOW5_HEADER)packet;
 		
-		// Save the sequence number of this packet.
-		const unsigned int seqnum = SwapBytes(&nfHeader->FlowSequence);
-			
 #ifdef _WIN32
+		// Save the sequence number of this packet.
+		const unsigned int seqnum = _byteswap_ulong(nfHeader->FlowSequence);
+		
 		// Build in a safeguard for the flow count, in case we run into a corrupt packet.
 		// The flow count makes sure we don't run out of our buffer.
-		const unsigned short flowCount = SwapBytes(&nfHeader->FlowCount);
+		const unsigned short flowCount = _byteswap_ushort(nfHeader->FlowCount);
 		if (flowCount <= 30)
 		{
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
@@ -341,26 +341,26 @@ void NetflowParser::ParseNetflow5Packet(const char* packet, const unsigned int l
 			for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
 			{
 				Netflow5Storage& newRecord = outRecords.Add();
-				newRecord.TimeStamp = SwapBytes(&nfHeader->UnixSeconds);
+				newRecord.TimeStamp = _byteswap_ulong(nfHeader->UnixSeconds);
 				newRecord.FlowSequence = seqnum + i;
 				newRecord.FlowStorage.SourceIpAddress = flowRecord->SourceIpAddress;
 				newRecord.FlowStorage.DestinationIpAddress = flowRecord->DestinationIpAddress;
 				newRecord.FlowStorage.NextHop = flowRecord->NextHop;
-				newRecord.FlowStorage.InputSnmp = SwapBytes(&flowRecord->InputSnmp);
-				newRecord.FlowStorage.OutputSnmp = SwapBytes(&flowRecord->OutputSnmp);
-				newRecord.FlowStorage.PacketCount = SwapBytes(&flowRecord->PacketCount);
-				newRecord.FlowStorage.BytesCount = SwapBytes(&flowRecord->BytesCount);
-				newRecord.FlowStorage.SysUptimeFirst = SwapBytes(&flowRecord->SysUptimeFirst);
-				newRecord.FlowStorage.SysUptimeLast = SwapBytes(&flowRecord->SysUptimeLast);
-				newRecord.FlowStorage.SourcePort = SwapBytes(&flowRecord->SourcePort);
-				newRecord.FlowStorage.DestinationPort = SwapBytes(&flowRecord->DestinationPort);
-				newRecord.FlowStorage.TcpFlags = SwapBytes(&flowRecord->TcpFlags);
-				newRecord.FlowStorage.Protocol = SwapBytes(&flowRecord->Protocol);
-				newRecord.FlowStorage.IpTypeOfService = SwapBytes(&flowRecord->IpTypeOfService);
-				newRecord.FlowStorage.SourceAutonomousSystemNumber = SwapBytes(&flowRecord->SourceAutonomousSystemNumber);
-				newRecord.FlowStorage.DestinationAutonomousSystemNumber = SwapBytes(&flowRecord->DestinationAutonomousSystemNumber);
-				newRecord.FlowStorage.SourceMask = SwapBytes(&flowRecord->SourceMask);
-				newRecord.FlowStorage.DestinationMask = SwapBytes(&flowRecord->DestinationMask);
+				newRecord.FlowStorage.InputSnmp = _byteswap_ushort(flowRecord->InputSnmp);
+				newRecord.FlowStorage.OutputSnmp = _byteswap_ushort(flowRecord->OutputSnmp);
+				newRecord.FlowStorage.PacketCount = _byteswap_ulong(flowRecord->PacketCount);
+				newRecord.FlowStorage.BytesCount = _byteswap_ulong(flowRecord->BytesCount);
+				newRecord.FlowStorage.SysUptimeFirst = _byteswap_ulong(flowRecord->SysUptimeFirst);
+				newRecord.FlowStorage.SysUptimeLast = _byteswap_ulong(flowRecord->SysUptimeLast);
+				newRecord.FlowStorage.SourcePort = _byteswap_ushort(flowRecord->SourcePort);
+				newRecord.FlowStorage.DestinationPort = _byteswap_ushort(flowRecord->DestinationPort);
+				newRecord.FlowStorage.TcpFlags = flowRecord->TcpFlags;
+				newRecord.FlowStorage.Protocol = flowRecord->Protocol;
+				newRecord.FlowStorage.IpTypeOfService = flowRecord->IpTypeOfService;
+				newRecord.FlowStorage.SourceAutonomousSystemNumber = _byteswap_ushort(flowRecord->SourceAutonomousSystemNumber);
+				newRecord.FlowStorage.DestinationAutonomousSystemNumber = _byteswap_ushort(flowRecord->DestinationAutonomousSystemNumber);
+				newRecord.FlowStorage.SourceMask = flowRecord->SourceMask;
+				newRecord.FlowStorage.DestinationMask = flowRecord->DestinationMask;
 			}
 		}		
 #else
@@ -398,13 +398,13 @@ void NetflowParser::ParseNetflow7Packet(const char* packet, const unsigned int l
 		// Retrieve flows from the packet.
 		const PNETFLOW7_HEADER nfHeader = (PNETFLOW7_HEADER)packet;
 		
-		// Save the sequence number of this packet.
-		const unsigned int seqnum = SwapBytes(&nfHeader->FlowSequence);
-			
 #ifdef _WIN32
+		// Save the sequence number of this packet.
+		const unsigned int seqnum = _byteswap_ulong(nfHeader->FlowSequence);
+
 		// Build in a safeguard for the flow count, in case we run into a corrupt packet.
 		// The flow count makes sure we don't run out of our buffer.
-		const unsigned short flowCount = SwapBytes(&nfHeader->FlowCount);
+		const unsigned short flowCount = _byteswap_ushort(nfHeader->FlowCount);
 		if (flowCount <= 30)
 		{
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
@@ -415,26 +415,27 @@ void NetflowParser::ParseNetflow7Packet(const char* packet, const unsigned int l
 			for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
 			{
 				Netflow7Storage& newRecord = outRecords.Add();
-				newRecord.TimeStamp = SwapBytes(&nfHeader->UnixSeconds);
+				newRecord.TimeStamp = _byteswap_ulong(nfHeader->UnixSeconds);
 				newRecord.FlowSequence = seqnum + i;
 				newRecord.FlowStorage.SourceIpAddress = flowRecord->SourceIpAddress;
 				newRecord.FlowStorage.DestinationIpAddress = flowRecord->DestinationIpAddress;
 				newRecord.FlowStorage.NextHop = flowRecord->NextHop;
-				newRecord.FlowStorage.InputSnmp = SwapBytes(&flowRecord->InputSnmp);
-				newRecord.FlowStorage.OutputSnmp = SwapBytes(&flowRecord->OutputSnmp);
-				newRecord.FlowStorage.PacketCount = SwapBytes(&flowRecord->PacketCount);
-				newRecord.FlowStorage.BytesCount = SwapBytes(&flowRecord->BytesCount);
-				newRecord.FlowStorage.SysUptimeFirst = SwapBytes(&flowRecord->SysUptimeFirst);
-				newRecord.FlowStorage.SysUptimeLast = SwapBytes(&flowRecord->SysUptimeLast);
-				newRecord.FlowStorage.SourcePort = SwapBytes(&flowRecord->SourcePort);
-				newRecord.FlowStorage.DestinationPort = SwapBytes(&flowRecord->DestinationPort);
-				newRecord.FlowStorage.TcpFlags = SwapBytes(&flowRecord->TcpFlags);
-				newRecord.FlowStorage.Protocol = SwapBytes(&flowRecord->Protocol);
-				newRecord.FlowStorage.IpTypeOfService = SwapBytes(&flowRecord->IpTypeOfService);
-				newRecord.FlowStorage.SourceAutonomousSystemNumber = SwapBytes(&flowRecord->SourceAutonomousSystemNumber);
-				newRecord.FlowStorage.DestinationAutonomousSystemNumber = SwapBytes(&flowRecord->DestinationAutonomousSystemNumber);
-				newRecord.FlowStorage.SourceMask = SwapBytes(&flowRecord->SourceMask);
-				newRecord.FlowStorage.DestinationMask = SwapBytes(&flowRecord->DestinationMask);
+				newRecord.FlowStorage.InputSnmp = _byteswap_ushort(flowRecord->InputSnmp);
+				newRecord.FlowStorage.OutputSnmp = _byteswap_ushort(flowRecord->OutputSnmp);
+				newRecord.FlowStorage.PacketCount = _byteswap_ulong(flowRecord->PacketCount);
+				newRecord.FlowStorage.BytesCount = _byteswap_ulong(flowRecord->BytesCount);
+				newRecord.FlowStorage.SysUptimeFirst = _byteswap_ulong(flowRecord->SysUptimeFirst);
+				newRecord.FlowStorage.SysUptimeLast = _byteswap_ulong(flowRecord->SysUptimeLast);
+				newRecord.FlowStorage.SourcePort = _byteswap_ushort(flowRecord->SourcePort);
+				newRecord.FlowStorage.DestinationPort = _byteswap_ushort(flowRecord->DestinationPort);
+				newRecord.FlowStorage.TcpFlags = flowRecord->TcpFlags;
+				newRecord.FlowStorage.Protocol = flowRecord->Protocol;
+				newRecord.FlowStorage.IpTypeOfService = flowRecord->IpTypeOfService;
+				newRecord.FlowStorage.SourceAutonomousSystemNumber = _byteswap_ushort(flowRecord->SourceAutonomousSystemNumber);
+				newRecord.FlowStorage.DestinationAutonomousSystemNumber = _byteswap_ushort(flowRecord->DestinationAutonomousSystemNumber);
+				newRecord.FlowStorage.SourceMask = flowRecord->SourceMask;
+				newRecord.FlowStorage.DestinationMask = flowRecord->DestinationMask;
+				newRecord.FlowStorage.Flags = _byteswap_ushort(flowRecord->Flags);
 			}
 		}		
 #else
@@ -478,7 +479,7 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 #ifdef _WIN32
 		// Build in a safeguard for the flow count, in case we run into a corrupt packet.
 		// The flow count makes sure we don't run out of our buffer.
-		const unsigned short flowCount = SwapBytes(&nfHeader->FlowCount);
+		const unsigned short flowCount = _byteswap_ushort(nfHeader->FlowCount);
 		if (flowCount <= 30)
 		{
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.

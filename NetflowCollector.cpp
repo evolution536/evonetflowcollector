@@ -166,7 +166,7 @@ const int NetflowCollector::CheckNetflowPacketVersion(const char* buffer) const
 	if (buffer)
 	{
 #ifdef _WIN32
-		return (int)SwapBytes((unsigned short*)buffer);
+		return (int)_byteswap_ushort(*(unsigned short*)buffer);
 #else
 		return (int)*(unsigned short*)buffer;
 #endif

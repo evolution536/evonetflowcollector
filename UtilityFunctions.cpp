@@ -23,27 +23,6 @@
 
 #include "UtilityFunctions.h"
 
-// Swaps bytes of primitive data types to read big endian data.
-template <typename T>
-const T SwapBytes(const T* a)
-{
-	int reversed = 0;
-	T retval;
-	for (int i = sizeof(T) - 1; i >= 0; i--)
-	{
-		((unsigned char*)&retval)[reversed++] = ((unsigned char*)a)[i];
-	}
-	return retval;
-}
-
-// ---------------------------------------------------------------------------------------------
-
-// Template definitions for SwapBytes function instances.
-template const unsigned short SwapBytes<unsigned short>(const unsigned short* a);
-template const unsigned long SwapBytes<unsigned long>(const unsigned long* a);
-template const unsigned char SwapBytes<unsigned char>(const unsigned char* a);
-template const unsigned int SwapBytes<unsigned int>(const unsigned int* a);
-
 // ---------------------------------------------------------------------------------------------
 
 // Converts a MAC address to its string representation.

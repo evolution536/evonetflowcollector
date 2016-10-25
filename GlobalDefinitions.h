@@ -36,7 +36,8 @@
 enum LoggingMethod
 {
 	LOGGING_METHOD_UNDEFINED,
-	LOGGING_METHOD_FILE
+	LOGGING_METHOD_FILE,
+	LOGGING_METHOD_NULL
 };
 
 // Global instance of the result container.
