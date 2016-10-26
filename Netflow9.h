@@ -121,7 +121,7 @@ typedef struct _NETFLOW9_HEADER
 #define VENDOR_PROPRIETARY_8			87
 
 // Cisco specific field definitions.
-#define FRAGMENT_OFFSET					88
+/*#define FRAGMENT_OFFSET				88
 #define FORWARDING_STATUS				89
 #define MPLS_PAL_RD						90
 #define MPLS_PREFIX_LEN					91
@@ -135,7 +135,7 @@ typedef struct _NETFLOW9_HEADER
 #define DEPRECATED						100
 #define layer2packetSectionOffset		102
 #define layer2packetSectionSize			103
-#define layer2packetSectionData			104
+#define layer2packetSectionData			104*/
 
 // Generic Netflow v9 flowset header.
 typedef struct _NETFLOW9_FLOWSET_HEADER
@@ -169,5 +169,10 @@ typedef struct _NETFLOW9_OPTIONS_TEMPLATE_HEADER
 	unsigned short OptionFieldLength;
 	unsigned short Padding1;
 } NETFLOW9_OPTIONS_TEMPLATE_HEADER, *PNETFLOW9_OPTIONS_TEMPLATE_HEADER;
+
+// Netflow v9 parsing functions.
+const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader);
+const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER optionsHeader);
+const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData);
 
 #endif

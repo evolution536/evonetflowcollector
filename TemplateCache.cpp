@@ -28,3 +28,9 @@ TemplateCache::~TemplateCache()
 {
 	
 }
+
+// Attemps to add a template to the cache. If the template already exists, it is replaced.
+void TemplateCache::AddTemplate(const unsigned short version, const unsigned short templateId)
+{
+	
+}

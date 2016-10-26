@@ -336,7 +336,6 @@ void NetflowParser::ParseNetflow5Packet(const char* packet, const unsigned int l
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
 			outRecords.Reserve(flowCount);
 			PNETFLOW5_FLOW_RECORD flowRecord = (PNETFLOW5_FLOW_RECORD)(packet + sizeof(NETFLOW5_HEADER));
-			//unsigned int seq = SwapBytes(&nfHeader->FlowSequence);
 			
 			for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
 			{
@@ -410,7 +409,6 @@ void NetflowParser::ParseNetflow7Packet(const char* packet, const unsigned int l
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
 			outRecords.Reserve(flowCount);
 			PNETFLOW7_FLOW_RECORD flowRecord = (PNETFLOW7_FLOW_RECORD)(packet + sizeof(NETFLOW7_HEADER));
-			//unsigned int seq = SwapBytes(&nfHeader->FlowSequence);
 			
 			for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
 			{
@@ -474,9 +472,46 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 		const PNETFLOW9_HEADER nfHeader = (PNETFLOW9_HEADER)packet;
 		
 		// Save the sequence number of this packet.
-		//const unsigned int seqnum = SwapBytes(&nfHeader->FlowSequence);
+		const unsigned int seqnum = _byteswap_ulong(nfHeader->PackageSequence);
 		
-#ifdef _WIN32
+		// Walk the packet flowsets, making sure it does not leave the bounds of the packet buffer.
+		unsigned int pktIt = sizeof(NETFLOW9_HEADER);
+		while (pktIt < length)
+		{
+			// Let's process the next flowset.
+			const NETFLOW9_FLOWSET_HEADER flowSet = *((PNETFLOW9_FLOWSET_HEADER)packet + pktIt);
+			pktIt += sizeof(NETFLOW9_FLOWSET_HEADER);
+					
+			// Is this flowset an option template?
+			if (flowSet.FlowsetID == 1)
+			{
+				// Parse options template flowset.
+				PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = (PNETFLOW9_OPTIONS_TEMPLATE_HEADER)packet + pktIt;
+				if (!ParseNetflow9OptionsTemplate(optionsHeader))
+				{
+					
+				}
+			}
+			// Is this flowset a data template?
+			else if (flowSet.FlowsetID <= 255)
+			{
+				PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = (PNETFLOW9_TEMPLATE_FLOWSET_HEADER)packet + pktIt;
+				
+			}
+			// Is this a flowset a collection of flow records?
+			else if (flowSet.FlowsetID > 255)
+			{
+				
+			}
+			else
+			{
+				// not valid?
+			}
+		}
+
+
+
+/*#ifdef _WIN32
 		// Build in a safeguard for the flow count, in case we run into a corrupt packet.
 		// The flow count makes sure we don't run out of our buffer.
 		const unsigned short flowCount = _byteswap_ushort(nfHeader->FlowCount);
@@ -484,17 +519,32 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 		{
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
 			outRecords.Reserve(flowCount);
+			
+			for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
+			{
+				Netflow9Storage& newRecord = outRecords.Add();
+				newRecord.TimeStamp = _byteswap_ulong(nfHeader->UnixSeconds);
+				newRecord.FlowSequence = seqnum + i;
+			}
 		}		
 #else
 		if (nfHeader->FlowCount <= 30)
 		{
 			// Save the sequence number of this packet.
-			//const unsigned int seqnum = nfHeader->FlowSequence;
+			const unsigned int seqnum = nfHeader->FlowSequence;
 			
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
 			outRecords.Reserve(nfHeader->FlowCount);	
+			
+			PNETFLOW9_FLOW_RECORD flowRecord = (PNETFLOW9_FLOW_RECORD)(packet + sizeof(NETFLOW9_HEADER));
+			for (int i = 0; i < nfHeader->FlowCount; ++i, ++flowRecord)
+			{
+				Netflow9Storage& newRecord = outRecords.Add();
+				newRecord.FlowSequence = seqnum + i;
+				
+			}
 		}
-#endif
+#endif*/
 
 		// Push the processed flows to the result container.
 		//GlobalResultContainer->PushNetflow9Flows(outRecords);

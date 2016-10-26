@@ -18,10 +18,26 @@
 #ifndef _EvoNetflowCollector_TemplateCache_h_
 #define _EvoNetflowCollector_TemplateCache_h_
 
+#include <Core/Core.h>
+
+using namespace Upp;
+
+// Represents a template for Netflow v9 or IPFIX.
+struct FlowTemplate : Moveable<FlowTemplate>
+{
+	// The version of Netflow of the template: 9 for Netflow v9 and 10 for IPFIX.
+	unsigned short Version;
+	
+	// The template ID of the template.
+	unsigned short TemplateID;
+};
+
 // Represents the template cache for Netflow v9 and IPFIX exports.
 class TemplateCache
 {
 private:
+	Vector<FlowTemplate> mFlowTemplates;
+	
 	TemplateCache();
 	~TemplateCache();
 	
@@ -33,6 +49,8 @@ public:
 		static TemplateCache instance;
 		return &instance;
 	}
+	
+	void AddTemplate(const unsigned short version, const unsigned short templateId);
 };
 
 #endif
