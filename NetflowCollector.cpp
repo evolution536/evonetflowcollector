@@ -74,7 +74,7 @@ const bool NetflowCollector::Bind(const unsigned short port)
     hints.ai_flags    = AI_PASSIVE;
     hints.ai_family   = AF_INET;
     hints.ai_socktype = SOCK_DGRAM;
-    
+
     // Get address information for our socket.
     if (getaddrinfo(NULL, IntStr(port), &hints, &res) != 0)
     {
@@ -82,7 +82,7 @@ const bool NetflowCollector::Bind(const unsigned short port)
     }
 
 	// Try open socket with each address getaddrinfo returned, until we get a valid listening socket.
-    ressave = res;    
+    ressave = res;
     while (res)
     {
         // We only want to listen on IPv4 or IPv6.
@@ -90,10 +90,10 @@ const bool NetflowCollector::Bind(const unsigned short port)
 		{
 			continue;
 		}
-		
+
 		// Try to create a socket on the currently iterated address.
 		this->mSocket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-		
+
 		// Check whether the socket was succesfully created.
 		if (this->mSocket != SOCKET_ERROR)
 		{
@@ -113,14 +113,14 @@ const bool NetflowCollector::Bind(const unsigned short port)
 #endif
 			}
 		}
-		
+
 		// Try the next address.
 		res = res->ai_next;
     }
 
 	// Free the address information structure used to bind the socket.
 	freeaddrinfo(ressave);
-	
+
 	// Created socket and bound succesfully?
 	if (this->mSocket == SOCKET_ERROR)
 	{
@@ -129,7 +129,7 @@ const bool NetflowCollector::Bind(const unsigned short port)
 
 	// Place the socket in listening mode. It doesn't matter whether this call succeeds or not.
 	listen(this->mSocket, LISTEN_QUEUE);
-	
+
 	// Did we succeed?
 	return this->mSocket != SOCKET_ERROR;
 }
@@ -145,9 +145,9 @@ void NetflowCollector::SetSocketOptions()
 
 	// Increase the receive buffer to avoid packets being dropped.
 	int p;
-	int optlen = sizeof(int);
+	socklen_t optlen = sizeof(socklen_t);
 	getsockopt(this->mSocket, SOL_SOCKET, SO_RCVBUF, (char*)&p, &optlen);
-	
+
 	// If the current buffer size is too small, we need to increase it.
 	if (p != SOCKET_ERROR && p < SOCKET_MINIMUM_BUFFER_SIZE)
 	{
@@ -165,11 +165,7 @@ const int NetflowCollector::CheckNetflowPacketVersion(const char* buffer) const
 {
 	if (buffer)
 	{
-#ifdef _WIN32
-		return (int)_byteswap_ushort(*(unsigned short*)buffer);
-#else
-		return (int)*(unsigned short*)buffer;
-#endif
+		return (int)ntohs(*(unsigned short*)buffer);
 	}
 
 	return 0;
@@ -180,25 +176,24 @@ void NetflowCollector::ListenerThread()
 {
 	// Storage for the source IP address.
 	sockaddr_storage clientinfo;
-	
+
 	// Buffer for receiving packets. The maximum UDP packet size is 64kb.
 	char recvBuffer[4096];
-	
+
 	// Adjust socket options.
 	this->SetSocketOptions();
-	
+
 	// Start the message loop.
 	while (this->mRunning)
 	{
 		int clientinfolen = sizeof(clientinfo);
-		
+
 		// Receive data from the UDP socket.
 #ifdef _WIN32
 		int bytesRead = recvfrom(this->mSocket, recvBuffer, sizeof(recvBuffer), 0, (sockaddr*)&clientinfo, &clientinfolen);
 #else
 		int bytesRead = recvfrom(this->mSocket, recvBuffer, sizeof(recvBuffer), 0, (sockaddr*)&clientinfo, (socklen_t*)&clientinfolen);
 #endif
-		
 		// Did we receive a packet?
 		if (bytesRead > 0)
 		{
@@ -208,7 +203,7 @@ void NetflowCollector::ListenerThread()
 #else
 			const IPV4ADDRESS ipaddr = ((sockaddr_in*)&clientinfo)->sin_addr.s_addr;
 #endif
-			
+
 			// Queue the packet for processing.
 			GlobalNetflowParser->QueueTask(this->CheckNetflowPacketVersion(recvBuffer), recvBuffer, bytesRead, (UNIVERSAL_IPADDRESS*)&ipaddr);
 		}
