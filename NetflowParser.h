@@ -90,7 +90,7 @@ public:
 	
 	void QueueTask(const unsigned int version, const char* packet, const unsigned int length, const UNIVERSAL_IPADDRESS* const expip);
 	
-	static const char* const GetProtocolStringFromNumber(const unsigned int number);
+	static const char* GetProtocolStringFromNumber(const unsigned int number);
 };
 
 #endif

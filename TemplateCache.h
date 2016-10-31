@@ -43,6 +43,12 @@ struct FlowTemplate : Moveable<FlowTemplate>
 	
 	// The fields of this template.
 	VectorMap<unsigned short, unsigned short> FieldCache;
+	
+	// Retrieves the field size of a field in this template.
+	const unsigned short GetFieldSize(const unsigned short fieldType) const
+	{
+		return this->FieldCache.Get(fieldType);
+	};
 };
 
 // Represents a key for the template cache container.

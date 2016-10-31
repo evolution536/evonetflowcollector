@@ -17,6 +17,7 @@
 
 #include "NetflowFileLogger.h"
 #include "UtilityFunctions.h"
+#include "GlobalDefinitions.h"
 
 // NetflowFileLogger default constructor.
 NetflowFileLogger::NetflowFileLogger(const char* const fileName)

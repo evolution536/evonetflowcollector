@@ -1,6 +1,5 @@
 Evo Netflow Collector - TODO list:
 
-- Byte swaps for Linux (GCC);
 - Transparency about which logging method is used;
 - Test with full blown Paessler generator;
 - UMK script for compiling!

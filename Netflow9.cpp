@@ -20,6 +20,7 @@
 using namespace Upp;
 
 #include "Netflow9.h"
+#include "NetflowParser.h"
 
 // Parses a Netflow v9 options template.
 const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader, const unsigned int length)
@@ -58,49 +59,70 @@ const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER tem
 
 // Attemps to parse a Netflow v9 field using its field type and length. Output will be dynamically returned.
 // The length of the buffer passed as output should be at least 64 bytes in size.
-const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData, void* const output)
+const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData, void* output)
 {
 	// Decide how to parse the specified field based on the length of the field, and secondly,
 	// on the type of field. For example, parse IPv4 addresses differently from packet count.
 	if (fieldLength == 1)
 	{
 		// There are multiple options for size 1.
-		switch (fieldType)
+		if (fieldType == PROTOCOL)
 		{
-			case PROTOCOL:
-				break;
-			case SRC_TOS:
-			case DST_TOS:
-				break;
-			case TCP_FLAGS:
-				break;
-			case SRC_MASK:
-			case DST_MASK:
-				break;
-			case IPV6_SRC_MASK:
-			case IPV6_DST_MASK:
-				break;
-			case MUL_IGMP_TYPE:
-				break;
-			case SAMPLING_ALGORITHM:
-				break;
-			case ENGINE_TYPE:
-				break;
-			case ENGINE_ID:
-				break;
-			case MPLS_TOP_LABEL_TYPE:
-				break;
-			case FLOW_SAMPLER_ID:
-				break;
-			case FLOW_SAMPLER_MODE:
-				break;
-			case MIN_TTL:
-			case MAX_TTL:
-				break;
-			case IP_PROTOCOL_VERSION:
-				break;
-			case DIRECTION:
-				break;
+			const char* proto = NetflowParser::GetProtocolStringFromNumber(*(unsigned char*)fieldData);
+			output = (void*)proto;
+			return true;
+		}
+		else if (fieldType == SRC_TOS || fieldType == DST_TOS)
+		{
+			
+		}
+		else if (fieldType == TCP_FLAGS)
+		{
+			
+		}
+		else if (fieldType == SRC_MASK || fieldType == DST_MASK || fieldType == IPV6_SRC_MASK || fieldType == IPV6_DST_MASK)
+		{
+			
+		}
+		else if (fieldType == MUL_IGMP_TYPE)
+		{
+			
+		}
+		else if (fieldType == SAMPLING_ALGORITHM)
+		{
+			
+		}
+		else if (fieldType == ENGINE_TYPE)
+		{
+			
+		}
+		else if (fieldType == ENGINE_ID)
+		{
+			
+		}
+		else if (fieldType == MPLS_TOP_LABEL_TYPE)
+		{
+			
+		}
+		else if (fieldType == FLOW_SAMPLER_ID)
+		{
+			
+		}
+		else if (fieldType == FLOW_SAMPLER_MODE)
+		{
+			
+		}
+		else if (fieldType == MIN_TTL || fieldType == MAX_TTL)
+		{
+			
+		}
+		else if (fieldType == IP_PROTOCOL_VERSION)
+		{
+			
+		}
+		else if (fieldType == DIRECTION)
+		{
+			
 		}
 	}
 	else if (fieldLength == 2)

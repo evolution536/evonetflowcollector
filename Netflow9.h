@@ -161,10 +161,8 @@ typedef struct _NETFLOW9_TEMPLATE_RECORD
 // Netflow v9 data flowset header.
 typedef struct _NETFLOW9_DATA_FLOWSET_HEADER
 {
-	struct
-	{
-		unsigned short FieldType;
-		unsigned char FieldValue[2];
+	unsigned short FieldType;
+	unsigned char FieldValue[2];
 } NETFLOW9_DATA_FLOWSET_HEADER, *PNETFLOW9_DATA_FLOWSET_HEADER;
 
 // Netflow v9 options template header.
@@ -190,6 +188,6 @@ typedef struct _NETFLOW9_OPTIONS_TEMPLATE_HEADER
 // Netflow v9 parsing functions.
 const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader, const unsigned int length);
 const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader, const unsigned int length, VectorMap<unsigned short, unsigned short>& fields);
-const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData);
+const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData, void* output);
 
 #endif
