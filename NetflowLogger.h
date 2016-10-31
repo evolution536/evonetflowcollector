@@ -23,7 +23,7 @@
 using namespace Upp;
 
 #include "EvoNetflow.h"
-#include "GlobalDefinitions.h"
+#include "NetflowResultContainer.h"
 
 // Represents the base class of a Netflow log dumper. Netflow is collected and dumped, for example to a file.
 class NetflowLogger

@@ -22,21 +22,56 @@
 
 using namespace Upp;
 
+// Represents the type of template.
+enum TemplateType
+{
+	TEMPLATE_DATA,
+	TEMPLATE_OPTIONS
+};
+
 // Represents a template for Netflow v9 or IPFIX.
 struct FlowTemplate : Moveable<FlowTemplate>
 {
 	// The version of Netflow of the template: 9 for Netflow v9 and 10 for IPFIX.
 	unsigned short Version;
 	
+	// The type of template, data or options.
+	TemplateType Type;
+	
 	// The template ID of the template.
 	unsigned short TemplateID;
+	
+	// The fields of this template.
+	VectorMap<unsigned short, unsigned short> FieldCache;
+};
+
+// Represents a key for the template cache container.
+struct TemplateCacheKey : Moveable<TemplateCacheKey>
+{
+	// The version of Netflow of the template: 9 for Netflow v9 and 10 for IPFIX.
+	unsigned short Version;
+	
+	// The template ID of the template.
+	unsigned short TemplateID;
+	
+	// We use this struct as map key, so it needs to return a hash value of some kind.
+	unsigned GetHashValue() const
+	{
+		return (this->Version * Random(256) + this->TemplateID * Random(256)) % 256;
+	};
+	
+	// Keys need to be comparable.
+	bool operator==(const TemplateCacheKey& other) const
+	{
+		return this->Version == other.Version && this->TemplateID == other.TemplateID;
+	};
 };
 
 // Represents the template cache for Netflow v9 and IPFIX exports.
 class TemplateCache
 {
 private:
-	Vector<FlowTemplate> mFlowTemplates;
+	VectorMap<TemplateCacheKey, FlowTemplate> mFlowTemplates;
 	
 	TemplateCache();
 	~TemplateCache();
@@ -48,9 +83,10 @@ public:
 	{
 		static TemplateCache instance;
 		return &instance;
-	}
+	};
 	
-	void AddTemplate(const unsigned short version, const unsigned short templateId);
+	void AddTemplate(const unsigned short version, const unsigned short templateID, const TemplateType type, const VectorMap<unsigned short, unsigned short>& dataFields);
+	const FlowTemplate* FindTemplate(const unsigned short version, const unsigned short templateID) const;
 };
 
 #endif

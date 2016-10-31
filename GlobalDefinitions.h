@@ -18,6 +18,7 @@
 #ifndef _EvoNetflowCollector_GlobalDefinitions_h_
 #define _EvoNetflowCollector_GlobalDefinitions_h_
 
+#include "TemplateCache.h"
 #include "NetflowResultContainer.h"
 #include "NetflowParser.h"
 
@@ -45,5 +46,8 @@ extern NetflowResultContainer* GlobalResultContainer;
 
 // Global instance of the Netflow parser.
 extern NetflowParser* GlobalNetflowParser;
+
+// Global instance of the template cache.
+extern TemplateCache* GlobalTemplateCache;
 
 #endif

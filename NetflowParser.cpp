@@ -479,28 +479,49 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 		while (pktIt < length)
 		{
 			// Let's process the next flowset.
-			const NETFLOW9_FLOWSET_HEADER flowSet = *((PNETFLOW9_FLOWSET_HEADER)packet + pktIt);
+			const NETFLOW9_FLOWSET_HEADER flowSet = *(PNETFLOW9_FLOWSET_HEADER)(packet + pktIt);
 			pktIt += sizeof(NETFLOW9_FLOWSET_HEADER);
 					
 			// Is this flowset an option template?
 			if (flowSet.FlowsetID == 1)
 			{
 				// Parse options template flowset.
-				PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = (PNETFLOW9_OPTIONS_TEMPLATE_HEADER)packet + pktIt;
-				if (!ParseNetflow9OptionsTemplate(optionsHeader))
+				NETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = *(PNETFLOW9_OPTIONS_TEMPLATE_HEADER)(packet + pktIt);
+				pktIt += sizeof(NETFLOW9_OPTIONS_TEMPLATE_HEADER);
+				if (!ParseNetflow9OptionsTemplate(&optionsHeader, length - pktIt))
 				{
-					
+					// parse succeeded...
 				}
 			}
 			// Is this flowset a data template?
 			else if (flowSet.FlowsetID <= 255)
 			{
-				PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = (PNETFLOW9_TEMPLATE_FLOWSET_HEADER)packet + pktIt;
-				
+				// Parse data template flowset.
+				NETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = *(PNETFLOW9_TEMPLATE_FLOWSET_HEADER)(packet + pktIt);
+				pktIt += sizeof(NETFLOW9_TEMPLATE_FLOWSET_HEADER);
+				VectorMap<unsigned short, unsigned short> dataFields;
+				if (ParseNetflow9DataTemplate(&templateHeader, length - pktIt, dataFields))
+				{
+					// Succeeded in parsing the template, now pass it to the template cache.
+					GlobalTemplateCache->AddTemplate(9, templateHeader.TemplateID, TEMPLATE_DATA, dataFields);
+				}
 			}
 			// Is this a flowset a collection of flow records?
 			else if (flowSet.FlowsetID > 255)
 			{
+				// Find out which template should be used to parse this flowset.
+				const FlowTemplate* const flowTemplate = GlobalTemplateCache->FindTemplate(9, flowSet.FlowsetID);
+				
+				// Parse flow data records.
+				PNETFLOW9_DATA_FLOWSET_HEADER flowRecord = (PNETFLOW9_DATA_FLOWSET_HEADER)(packet + pktIt);
+				for (int i = 0; i < flowSet.Length; ++i)
+				{
+					char output[64];
+					/*if (ParseNetflow9Field())
+					{
+						
+					}*/
+				}
 				
 			}
 			else

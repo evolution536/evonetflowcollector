@@ -151,10 +151,20 @@ typedef struct _NETFLOW9_TEMPLATE_FLOWSET_HEADER
 	unsigned short FieldCount;
 } NETFLOW9_TEMPLATE_FLOWSET_HEADER, *PNETFLOW9_TEMPLATE_FLOWSET_HEADER;
 
+// Netflow v9 template record descriptor.
+typedef struct _NETFLOW9_TEMPLATE_RECORD
+{
+	unsigned short FieldType;
+	unsigned short FieldLength;
+} NETFLOW9_TEMPLATE_RECORD, *PNETFLOW9_TEMPLATE_RECORD;
+
 // Netflow v9 data flowset header.
 typedef struct _NETFLOW9_DATA_FLOWSET_HEADER
 {
-	unsigned char FieldCollection[4];
+	struct
+	{
+		unsigned short FieldType;
+		unsigned char FieldValue[2];
 } NETFLOW9_DATA_FLOWSET_HEADER, *PNETFLOW9_DATA_FLOWSET_HEADER;
 
 // Netflow v9 options template header.
@@ -170,9 +180,16 @@ typedef struct _NETFLOW9_OPTIONS_TEMPLATE_HEADER
 	unsigned short Padding1;
 } NETFLOW9_OPTIONS_TEMPLATE_HEADER, *PNETFLOW9_OPTIONS_TEMPLATE_HEADER;
 
+// Options template scope type definitions.
+#define OPTIONS_SCOPE_SYSTEM			1
+#define OPTIONS_SCOPE_INTERFACE			2
+#define OPTIONS_SCOPE_LINECARD			3
+#define OPTIONS_SCOPE_NETFLOW_CACHE		4
+#define OPTIONS_SCOPE_TEMPLATE			5
+
 // Netflow v9 parsing functions.
-const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader);
-const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER optionsHeader);
+const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader, const unsigned int length);
+const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader, const unsigned int length, VectorMap<unsigned short, unsigned short>& fields);
 const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData);
 
 #endif

@@ -1,6 +1,8 @@
 Evo Netflow Collector - TODO list:
 
 - Test with full blown Paessler generator;
+- UMK script for compiling!
+- Command line options to only accept specific versions of Netflow;
 - Replace 'reserve' of Vector with a thread-local pre-allocated storage;
 - Sequence numbers for flows!
 	- Track missed flows:

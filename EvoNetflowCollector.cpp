@@ -17,13 +17,12 @@
 
 #include <signal.h>
 
+#include "GlobalDefinitions.h"
 #include "EvoNetflowCollector.h"
 #include "CommandLineArgumentParser.h"
-#include "GlobalDefinitions.h"
 #include "NetflowFileLogger.h"
 #include "NetflowNullLogger.h"
 #include "NetflowCollector.h"
-#include "NetflowParser.h"
 #include "UtilityFunctions.h"
 
 // This keeps the application running.
@@ -34,6 +33,7 @@ NetflowResultContainer* GlobalResultContainer = NULL;
 NetflowLogger* GlobalNetflowLogger = NULL;
 NetflowParser* GlobalNetflowParser = NULL;
 NetflowCollector* GlobalNetflowCollector = NULL;
+TemplateCache* GlobalTemplateCache = NULL;
 
 // Collector information structure.
 EvoNetflowCollector GlobalCollector;
@@ -270,6 +270,9 @@ CONSOLE_APP_MAIN
 	
 	// Initialize the result container.
 	GlobalResultContainer = NetflowResultContainer::GetInstance();
+	
+	// Initialize the template cache.
+	GlobalTemplateCache = TemplateCache::GetInstance();
 	
 	// Initialize the Netflow parser, and start the processing loop.
 	GlobalNetflowParser = new NetflowParser();

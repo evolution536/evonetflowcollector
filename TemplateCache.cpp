@@ -30,7 +30,37 @@ TemplateCache::~TemplateCache()
 }
 
 // Attemps to add a template to the cache. If the template already exists, it is replaced.
-void TemplateCache::AddTemplate(const unsigned short version, const unsigned short templateId)
+void TemplateCache::AddTemplate(const unsigned short version, const unsigned short templateID, const TemplateType type, const VectorMap<unsigned short, unsigned short>& dataFields)
 {
+	// Construct the key.
+	TemplateCacheKey key;
+	key.Version = version;
+	key.TemplateID = templateID;
 	
+	// No need to check for existence of the specified template, the map will do that for us.
+	FlowTemplate& templ = this->mFlowTemplates.Get(key);
+	templ.Type = type;
+	
+	// Clear the current field list and insert the new one.
+	templ.FieldCache.Clear();
+	templ.FieldCache <<= dataFields;
+}
+
+// Looks for the specified template in the cache, and returns a pointer if it is found, or NULL otherwise.
+const FlowTemplate* TemplateCache::FindTemplate(const unsigned short version, const unsigned short templateID) const
+{
+	// Construct the key.
+	TemplateCacheKey key;
+	key.Version = version;
+	key.TemplateID = templateID;
+	
+	// Look for the specified template.
+	const int pos = this->mFlowTemplates.Find(key);
+	if (pos >= 0)
+	{
+		return &this->mFlowTemplates.Get(key);
+	}
+	
+	// Not found!
+	return NULL;
 }

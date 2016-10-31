@@ -15,17 +15,44 @@
     along with EvoNetflowCollector.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include <Core/Core.h>
+
+using namespace Upp;
+
 #include "Netflow9.h"
 
 // Parses a Netflow v9 options template.
-const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader)
+const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader, const unsigned int length)
 {
+	// Check the boundaries of the buffer, we don't want to run outside of the buffer in case of a corrupt packet.
+	//if (set.FieldCount * sizeof(NETFLOW9_TEMPLATE_RECORD) > length) // scope fields + option fields!
+	//{
+	//	return false;
+	//}
+	
 	return true;
 }
 
 // Parses a Netflow v9 data template.
-const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER optionsHeader)
+const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader, const unsigned int length, VectorMap<unsigned short, unsigned short>& fields)
 {
+	// Check the boundaries of the buffer, we don't want to run outside of the buffer in case of a corrupt packet.
+	if (templateHeader->FieldCount * sizeof(NETFLOW9_TEMPLATE_RECORD) > length)
+	{
+		return false;
+	}
+	
+	// Reserve space for the fields.
+	fields.Reserve(templateHeader->FieldCount);
+	
+	// Iterate through all template field records.
+	PNETFLOW9_TEMPLATE_RECORD record = (PNETFLOW9_TEMPLATE_RECORD)((char*)templateHeader + sizeof(NETFLOW9_TEMPLATE_FLOWSET_HEADER));
+	for (int i = 0; i < templateHeader->FieldCount; ++i, ++record)
+	{
+		// Save the template record.
+		fields.Put(record->FieldType, record->FieldLength);
+	}
+	
 	return true;
 }
 

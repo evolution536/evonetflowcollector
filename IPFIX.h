@@ -20,6 +20,7 @@
 
 #include "EvoNetflow.h"
 
+// IPFIX message header.
 typedef struct _IPFIX_HEADER
 {
 	unsigned short Version;
@@ -27,8 +28,42 @@ typedef struct _IPFIX_HEADER
 	unsigned long ExportTimeStamp;
 	unsigned long SequenceNumber;
 	unsigned long ObservationDomainId;
-	
 } IPFIX_HEADER, *PIPFIX_HEADER;
+
+// IPFIX set header.
+typedef struct _IPFIX_SET_HEADER
+{
+	unsigned short SetID;
+	unsigned short Length;
+} IPFIX_SET_HEADER, *PIPFIX_SET_HEADER;
+
+// IPFIX information element header.
+typedef union _IPFIX_INFORMATION_ELEMENT_HEADER
+{
+	struct
+	{
+		unsigned short ID;
+		unsigned short Length;
+	};
+	unsigned long EnterpriseNumber;
+} IPFIX_INFORMATION_ELEMENT_HEADER, *PIPFIX_INFORMATION_ELEMENT_HEADER;
+
+// IPFIX template header.
+typedef struct _IPFIX_TEMPLATE_HEADER
+{
+	unsigned short TemplateID;
+	unsigned short FieldCount;
+	IPFIX_INFORMATION_ELEMENT_HEADER Fields[1];
+} IPFIX_TEMPLATE_HEADER, *PIPFIX_TEMPLATE_HEADER;
+
+// IPFIX options template header.
+typedef struct _IPFIX_OPTIONS_TEMPLATE_HEADER
+{
+	unsigned short TemplateID;
+	unsigned short FieldCount;
+	unsigned short ScopeFieldCount;
+	IPFIX_INFORMATION_ELEMENT_HEADER Fields[1];
+} IPFIX_OPTIONS_TEMPLATE_HEADER, *PIPFIX_OPTIONS_TEMPLATE_HEADER;
 
 // IPFIX field definitions.
 // Source: http://www.iana.org/assignments/ipfix/ipfix.xhtml
