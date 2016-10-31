@@ -112,14 +112,14 @@ void FinalizeProgram()
 	// Record time of application shutdown and calculate average packet processing count.
 	Time endtime = GetSysTime();
 	const unsigned int elapsed = (unsigned int)(endtime - GlobalCollector.StartTime);
-	
+
 	// Output application statistics.
 	Cout() << "\nNetflow collector statistics:\n\n"
 		<< GlobalCollector.TotalFlows << " flows were collected, totalling " << GlobalCollector.TotalBytes << " bytes " << FormatReceivedBytes(GlobalCollector.TotalBytes)
 		<< "\nCollected for " << GetElapsedTimeStatistics(elapsed) << " , collecting an average of " << GlobalCollector.TotalFlows / elapsed << " flows/second.\n"
 		<< GlobalNetflowParser->GetFailedTasks() << " packets failed to process, and " << GlobalResultContainer->GetDroppedFlowCount() << " flows were dropped.\n"
 		<< "Shutting down collector.\n";
-	
+
 	// Stop the listener and wait for all queued packets to be processed.
 	GlobalNetflowCollector->StopListening();
 
@@ -127,7 +127,7 @@ void FinalizeProgram()
 	// it will cause crashes on program finalization.
 	GlobalNetflowParser->StopParser();
 	delete GlobalNetflowParser;
-	
+
 	// Flush and stop the logger.
 	if (GlobalNetflowLogger)
 	{
@@ -171,13 +171,13 @@ void DebugOutputNetflow7(const Netflow7Storage* const flow)
 // Writes Netflow v9 debug output for a specified flow.
 void DebugOutputNetflow9(const Netflow9Storage* const flow)
 {
-	
+
 }
 
 // Writes IPFIX debug output for a specified flow.
 void DebugOutputIPFIX()
 {
-	
+
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -207,10 +207,10 @@ CONSOLE_APP_MAIN
 	int minor;
 	GetEvoNetflowCollectorVersion(&major, &minor);
 	Cout() << "Evo Netflow Collector - version " << major << "." << minor << ", by evolution536.\n\n";
-	
+
 	// Retrieve command line options.
 	CommandLineArgumentParser cmdParser(CommandLine());
-	
+
 	// Display help and exit the program. If the port is 0, meaning no port was entered, display the help as well.
 	if (cmdParser.GetWasHelpRequested() || !cmdParser.GetPortArgument() || (!cmdParser.GetWasDebuggingMode()
 		&& (cmdParser.GetLoggingMethod() == LOGGING_METHOD_UNDEFINED)))
@@ -218,7 +218,7 @@ CONSOLE_APP_MAIN
 		Cout() << CommandLineArgumentParser::GetHelpOutput();
 		return;
 	}
-	
+
 	// If any logging method was specified, initialize it.
 	if (cmdParser.GetLoggingMethod() == LOGGING_METHOD_FILE)
 	{
@@ -228,7 +228,7 @@ CONSOLE_APP_MAIN
 			Cout() << "Please specify an output filename using the -o <filename> argument!\n";
 			return;
 		}
-		
+
 		// Initialize file logger.
 		GlobalNetflowLogger = new NetflowFileLogger(cmdParser.GetLogFileArgument());
 	}
@@ -237,16 +237,16 @@ CONSOLE_APP_MAIN
 		// Initialize null logger.
 		GlobalNetflowLogger = new NetflowNullLogger();
 	}
-	
+
 	// Check if the logger was succesfully initialized.
 	if (GlobalNetflowLogger && !GlobalNetflowLogger->IsReady())
 	{
 		Cout() << "Failed to initialize the specified logger!\n";
 	}
-	
+
 	// Set interrupt handler to catch Ctrl+C. We need to clean up stuff first if the user signals the program.
 	signal(SIGINT, SignalHandler);
-	
+
 	// Get the current time as start time.
 	GlobalCollector.StartTime = GetSysTime();
 
@@ -258,29 +258,29 @@ CONSOLE_APP_MAIN
 	if (!GlobalNetflowCollector->BeginListen(portArg))
 	{
 		Cout() << "Failed to bind a socket to port " << portArg << "!\n";
-		
+
 		// If a logger was activated, destruct it.
 		if (GlobalNetflowLogger)
 		{
 			delete GlobalNetflowLogger;
 		}
-		
+
 		return;
 	}
-	
+
 	// Initialize the result container.
 	GlobalResultContainer = NetflowResultContainer::GetInstance();
-	
+
 	// Initialize the Netflow parser, and start the processing loop.
 	GlobalNetflowParser = new NetflowParser();
 	GlobalNetflowParser->StartParser();
 
 	// Report that we have started collecting.
 	Cout() << "Listening for input on port " << portArg << "...\n";
-	
+
 	// Set the application to started state.
 	appRunning = true;
-	
+
 	// Keep a loop running to process asynchronous event callbacks.
 	while (appRunning)
 	{
@@ -290,7 +290,7 @@ CONSOLE_APP_MAIN
 			// There are v5 flows in the back buffer. Retrieve them and submit them to output.
 			Vector<Netflow1Storage> localFlows;
 			const unsigned int flowCount = GlobalResultContainer->GetNetflow1BackBuffer(localFlows);
-			
+
 			// Output v5 flows to the logger.
 			for (unsigned int i = 0; i < flowCount; ++i)
 			{
@@ -299,28 +299,28 @@ CONSOLE_APP_MAIN
 				{
 					DebugOutputNetflow1(&localFlows[i]);
 				}
-				
+
 				// If a logger was instantiated, push Netflow to the logger.
 				if (GlobalNetflowLogger)
 				{
 					GlobalNetflowLogger->WriteNetflow1Record(&localFlows[i]);
 				}
-				
+
 				// Increment the bytes counter.
 				GlobalCollector.TotalBytes += localFlows[i].FlowStorage.BytesCount;
 			}
-			
+
 			// Increment the processed flow counter.
 			GlobalCollector.TotalFlows += flowCount;
 		}
-		
+
 		// Poll the back buffers for processed Netflow v5 flows.
 		if (GlobalResultContainer->GetNetflow5BackBufferSize() > 0)
 		{
 			// There are v5 flows in the back buffer. Retrieve them and submit them to output.
 			Vector<Netflow5Storage> localFlows;
 			const unsigned int flowCount = GlobalResultContainer->GetNetflow5BackBuffer(localFlows);
-			
+
 			// Output v5 flows to the logger.
 			for (unsigned int i = 0; i < flowCount; ++i)
 			{
@@ -329,28 +329,28 @@ CONSOLE_APP_MAIN
 				{
 					DebugOutputNetflow5(&localFlows[i]);
 				}
-				
+
 				// If a logger was instantiated, push Netflow to the logger.
 				if (GlobalNetflowLogger)
 				{
 					GlobalNetflowLogger->WriteNetflow5Record(&localFlows[i]);
 				}
-				
+
 				// Increment the bytes counter.
 				GlobalCollector.TotalBytes += localFlows[i].FlowStorage.BytesCount;
 			}
-			
+
 			// Increment the processed flow counter.
 			GlobalCollector.TotalFlows += flowCount;
 		}
-		
+
 		// Poll the back buffers for processed Netflow v7 flows.
 		if (GlobalResultContainer->GetNetflow7BackBufferSize() > 0)
 		{
 			// There are v5 flows in the back buffer. Retrieve them and submit them to output.
 			Vector<Netflow7Storage> localFlows;
 			const unsigned int flowCount = GlobalResultContainer->GetNetflow7BackBuffer(localFlows);
-			
+
 			// Output v5 flows to the logger.
 			for (unsigned int i = 0; i < flowCount; ++i)
 			{
@@ -359,21 +359,21 @@ CONSOLE_APP_MAIN
 				{
 					DebugOutputNetflow7(&localFlows[i]);
 				}
-				
+
 				// If a logger was instantiated, push Netflow to the logger.
 				if (GlobalNetflowLogger)
 				{
 					GlobalNetflowLogger->WriteNetflow7Record(&localFlows[i]);
 				}
-				
+
 				// Increment the bytes counter.
 				GlobalCollector.TotalBytes += localFlows[i].FlowStorage.BytesCount;
 			}
-			
+
 			// Increment the processed flow counter.
 			GlobalCollector.TotalFlows += flowCount;
 		}
-		
+
 		// Give the CPU a break.
 		Thread::Sleep(1);
 	}

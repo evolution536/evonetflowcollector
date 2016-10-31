@@ -235,17 +235,17 @@ void NetflowParser::ProcessingLoop()
 	{
 		// Make sure nobody is writing to the queue.
 		this->mLock.Enter();
-		
+
 		// Check for tasks in the queue.
 		while (this->mQueuedTasks.GetCount() > 0)
 		{
 			this->ProcessTask(this->mQueuedTasks.Head());
 			this->mQueuedTasks.DropHead();
 		}
-		
+
 		// Let go of the lock.
 		this->mLock.Leave();
-		
+
 		// Give the CPU a break.
 		Thread::Sleep(5);
 	}
@@ -259,10 +259,10 @@ void NetflowParser::ParseNetflow1Packet(const char* packet, const unsigned int l
 	{
 		// Output vector for the processed flows.
 		Vector<Netflow1Storage> outRecords;
-		
+
 		// Retrieve flows from the packet.
 		const PNETFLOW1_HEADER nfHeader = (PNETFLOW1_HEADER)packet;
-			
+
 #ifdef _WIN32
 		// Build in a safeguard for the flow count, in case we run into a corrupt packet.
 		// The flow count makes sure we don't run out of our buffer.
@@ -272,7 +272,7 @@ void NetflowParser::ParseNetflow1Packet(const char* packet, const unsigned int l
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
 			outRecords.Reserve(flowCount);
 			PNETFLOW1_FLOW_RECORD flowRecord = (PNETFLOW1_FLOW_RECORD)(packet + sizeof(NETFLOW1_HEADER));
-			
+
 			for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
 			{
 				Netflow1Storage& newRecord = outRecords.Add();
@@ -292,7 +292,7 @@ void NetflowParser::ParseNetflow1Packet(const char* packet, const unsigned int l
 				newRecord.FlowStorage.Protocol = flowRecord->Protocol;
 				newRecord.FlowStorage.IpTypeOfService = flowRecord->IpTypeOfService;
 			}
-		}		
+		}
 #else
 		if (nfHeader->FlowCount <= 24)
 		{
@@ -303,7 +303,7 @@ void NetflowParser::ParseNetflow1Packet(const char* packet, const unsigned int l
 			{
 				Netflow1Storage& newRecord = outRecords.Add();
 				newRecord.FlowStorage = *flowRecord;
-			}	
+			}
 		}
 #endif
 
@@ -320,14 +320,14 @@ void NetflowParser::ParseNetflow5Packet(const char* packet, const unsigned int l
 	{
 		// Output vector for the processed flows.
 		Vector<Netflow5Storage> outRecords;
-		
+
 		// Retrieve flows from the packet.
 		const PNETFLOW5_HEADER nfHeader = (PNETFLOW5_HEADER)packet;
-		
+
 #ifdef _WIN32
 		// Save the sequence number of this packet.
 		const unsigned int seqnum = _byteswap_ulong(nfHeader->FlowSequence);
-		
+
 		// Build in a safeguard for the flow count, in case we run into a corrupt packet.
 		// The flow count makes sure we don't run out of our buffer.
 		const unsigned short flowCount = _byteswap_ushort(nfHeader->FlowCount);
@@ -336,7 +336,7 @@ void NetflowParser::ParseNetflow5Packet(const char* packet, const unsigned int l
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
 			outRecords.Reserve(flowCount);
 			PNETFLOW5_FLOW_RECORD flowRecord = (PNETFLOW5_FLOW_RECORD)(packet + sizeof(NETFLOW5_HEADER));
-			
+
 			for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
 			{
 				Netflow5Storage& newRecord = outRecords.Add();
@@ -361,22 +361,45 @@ void NetflowParser::ParseNetflow5Packet(const char* packet, const unsigned int l
 				newRecord.FlowStorage.SourceMask = flowRecord->SourceMask;
 				newRecord.FlowStorage.DestinationMask = flowRecord->DestinationMask;
 			}
-		}		
+		}
 #else
-		if (nfHeader->FlowCount <= 30)
+		// Build in a safeguard for the flow count, in case we run into a corrupt packet.
+		// The flow count makes sure we don't run out of our buffer.
+		const unsigned short flowCount = ntohs(nfHeader->FlowCount);
+
+		if (flowCount <= 30)
 		{
 			// Save the sequence number of this packet.
-			const unsigned int seqnum = nfHeader->FlowSequence;
-			
+			const unsigned int seqnum = ntohl(nfHeader->FlowSequence);
+
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
-			outRecords.Reserve(nfHeader->FlowCount);
+			outRecords.Reserve(flowCount);
 			PNETFLOW5_FLOW_RECORD flowRecord = (PNETFLOW5_FLOW_RECORD)(packet + sizeof(NETFLOW5_HEADER));
-			for (int i = 0; i < nfHeader->FlowCount; ++i, ++flowRecord)
-			{
-				Netflow5Storage& newRecord = outRecords.Add();
-				newRecord.FlowSequence = seqnum + i;
-				newRecord.FlowStorage = *flowRecord;
-			}	
+
+                        for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
+                        {
+                                Netflow5Storage& newRecord = outRecords.Add();
+                                newRecord.TimeStamp = ntohl(nfHeader->UnixSeconds);
+                                newRecord.FlowSequence = seqnum + i;
+                                newRecord.FlowStorage.SourceIpAddress = flowRecord->SourceIpAddress;
+                                newRecord.FlowStorage.DestinationIpAddress = flowRecord->DestinationIpAddress;
+                                newRecord.FlowStorage.NextHop = flowRecord->NextHop;
+                                newRecord.FlowStorage.InputSnmp = ntohs(flowRecord->InputSnmp);
+                                newRecord.FlowStorage.OutputSnmp = ntohs(flowRecord->OutputSnmp);
+                                newRecord.FlowStorage.PacketCount = ntohl(flowRecord->PacketCount);
+                                newRecord.FlowStorage.BytesCount = ntohl(flowRecord->BytesCount);
+                                newRecord.FlowStorage.SysUptimeFirst = ntohl(flowRecord->SysUptimeFirst);
+                                newRecord.FlowStorage.SysUptimeLast = ntohl(flowRecord->SysUptimeLast);
+                                newRecord.FlowStorage.SourcePort = ntohs(flowRecord->SourcePort);
+                                newRecord.FlowStorage.DestinationPort = ntohs(flowRecord->DestinationPort);
+                                newRecord.FlowStorage.TcpFlags = flowRecord->TcpFlags;
+                                newRecord.FlowStorage.Protocol = flowRecord->Protocol;
+                                newRecord.FlowStorage.IpTypeOfService = flowRecord->IpTypeOfService;
+                                newRecord.FlowStorage.SourceAutonomousSystemNumber = ntohs(flowRecord->SourceAutonomousSystemNumber);
+                                newRecord.FlowStorage.DestinationAutonomousSystemNumber = ntohs(flowRecord->DestinationAutonomousSystemNumber);
+                                newRecord.FlowStorage.SourceMask = flowRecord->SourceMask;
+                                newRecord.FlowStorage.DestinationMask = flowRecord->DestinationMask;
+                        }
 		}
 #endif
 
@@ -393,10 +416,10 @@ void NetflowParser::ParseNetflow7Packet(const char* packet, const unsigned int l
 	{
 		// Output vector for the processed flows.
 		Vector<Netflow7Storage> outRecords;
-		
+
 		// Retrieve flows from the packet.
 		const PNETFLOW7_HEADER nfHeader = (PNETFLOW7_HEADER)packet;
-		
+
 #ifdef _WIN32
 		// Save the sequence number of this packet.
 		const unsigned int seqnum = _byteswap_ulong(nfHeader->FlowSequence);
@@ -409,7 +432,7 @@ void NetflowParser::ParseNetflow7Packet(const char* packet, const unsigned int l
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
 			outRecords.Reserve(flowCount);
 			PNETFLOW7_FLOW_RECORD flowRecord = (PNETFLOW7_FLOW_RECORD)(packet + sizeof(NETFLOW7_HEADER));
-			
+
 			for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
 			{
 				Netflow7Storage& newRecord = outRecords.Add();
@@ -435,13 +458,13 @@ void NetflowParser::ParseNetflow7Packet(const char* packet, const unsigned int l
 				newRecord.FlowStorage.DestinationMask = flowRecord->DestinationMask;
 				newRecord.FlowStorage.Flags = _byteswap_ushort(flowRecord->Flags);
 			}
-		}		
+		}
 #else
 		if (nfHeader->FlowCount <= 30)
 		{
 			// Save the sequence number of this packet.
 			const unsigned int seqnum = nfHeader->FlowSequence;
-			
+
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
 			outRecords.Reserve(nfHeader->FlowCount);
 			PNETFLOW7_FLOW_RECORD flowRecord = (PNETFLOW7_FLOW_RECORD)(packet + sizeof(NETFLOW7_HEADER));
@@ -450,7 +473,7 @@ void NetflowParser::ParseNetflow7Packet(const char* packet, const unsigned int l
 				Netflow7Storage& newRecord = outRecords.Add();
 				newRecord.FlowSequence = seqnum + i;
 				newRecord.FlowStorage = *flowRecord;
-			}	
+			}
 		}
 #endif
 
@@ -467,13 +490,14 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 	{
 		// Output vector for the processed flows.
 		Vector<Netflow9Storage> outRecords;
-		
+
 		// Retrieve flows from the packet.
 		const PNETFLOW9_HEADER nfHeader = (PNETFLOW9_HEADER)packet;
-		
+
+#ifdef _WIN32
 		// Save the sequence number of this packet.
 		const unsigned int seqnum = _byteswap_ulong(nfHeader->PackageSequence);
-		
+
 		// Walk the packet flowsets, making sure it does not leave the bounds of the packet buffer.
 		unsigned int pktIt = sizeof(NETFLOW9_HEADER);
 		while (pktIt < length)
@@ -481,7 +505,7 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 			// Let's process the next flowset.
 			const NETFLOW9_FLOWSET_HEADER flowSet = *((PNETFLOW9_FLOWSET_HEADER)packet + pktIt);
 			pktIt += sizeof(NETFLOW9_FLOWSET_HEADER);
-					
+
 			// Is this flowset an option template?
 			if (flowSet.FlowsetID == 1)
 			{
@@ -489,26 +513,26 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 				PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = (PNETFLOW9_OPTIONS_TEMPLATE_HEADER)packet + pktIt;
 				if (!ParseNetflow9OptionsTemplate(optionsHeader))
 				{
-					
+
 				}
 			}
 			// Is this flowset a data template?
 			else if (flowSet.FlowsetID <= 255)
 			{
 				PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = (PNETFLOW9_TEMPLATE_FLOWSET_HEADER)packet + pktIt;
-				
+
 			}
 			// Is this a flowset a collection of flow records?
 			else if (flowSet.FlowsetID > 255)
 			{
-				
+
 			}
 			else
 			{
 				// not valid?
 			}
 		}
-
+#endif
 
 
 /*#ifdef _WIN32
@@ -519,29 +543,29 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 		{
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
 			outRecords.Reserve(flowCount);
-			
+
 			for (unsigned int i = 0; i < flowCount; ++i, ++flowRecord)
 			{
 				Netflow9Storage& newRecord = outRecords.Add();
 				newRecord.TimeStamp = _byteswap_ulong(nfHeader->UnixSeconds);
 				newRecord.FlowSequence = seqnum + i;
 			}
-		}		
+		}
 #else
 		if (nfHeader->FlowCount <= 30)
 		{
 			// Save the sequence number of this packet.
 			const unsigned int seqnum = nfHeader->FlowSequence;
-			
+
 			// Walk the flows in the packet and parse them using the Netflow v5 structures.
-			outRecords.Reserve(nfHeader->FlowCount);	
-			
+			outRecords.Reserve(nfHeader->FlowCount);
+
 			PNETFLOW9_FLOW_RECORD flowRecord = (PNETFLOW9_FLOW_RECORD)(packet + sizeof(NETFLOW9_HEADER));
 			for (int i = 0; i < nfHeader->FlowCount; ++i, ++flowRecord)
 			{
 				Netflow9Storage& newRecord = outRecords.Add();
 				newRecord.FlowSequence = seqnum + i;
-				
+
 			}
 		}
 #endif*/
@@ -554,7 +578,7 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 // Parses an IPFIX packet.
 void NetflowParser::ParseIPFIXPacket(const char* packet, const unsigned int length)
 {
-	
+
 }
 
 // ---------------------------------------------------------------------------------------------

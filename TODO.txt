@@ -1,5 +1,7 @@
 Evo Netflow Collector - TODO list:
 
+- Byte swaps for Linux (GCC);
+- Transparency about which logging method is used;
 - Test with full blown Paessler generator;
 - Replace 'reserve' of Vector with a thread-local pre-allocated storage;
 - Sequence numbers for flows!
