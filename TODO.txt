@@ -4,6 +4,10 @@ Evo Netflow Collector - TODO list:
 - Test with full blown Paessler generator;
 - UMK script for compiling!
 - Command line options to only accept specific versions of Netflow;
+- Move to a more generic flow storage?
+- Option to parse port numbers to a string representation;
+- Option to resolve ASN;
+- Option to resolve SNMP interface indices to names;
 - Replace 'reserve' of Vector with a thread-local pre-allocated storage;
 - Sequence numbers for flows!
 	- Track missed flows:

@@ -34,6 +34,10 @@ NetflowResultContainer::NetflowResultContainer()
 	// Initialize the Netflow v7 back buffer.
 	this->mv7BufferSize = 0;
 	this->mv7BackBuffer = new Netflow7Storage[BACK_BUFFER_SIZE_PER_VERSION];
+	
+	// Initialize the Netflow v9 back buffer.
+	this->mv9BufferSize = 0;
+	this->mv9BackBuffer = new Netflow9Storage[BACK_BUFFER_SIZE_PER_VERSION];
 }
 
 // NetflowResultContainer default destructor.
@@ -43,12 +47,13 @@ NetflowResultContainer::~NetflowResultContainer()
 	delete[] this->mv1BackBuffer;
 	delete[] this->mv5BackBuffer;
 	delete[] this->mv7BackBuffer;
+	delete[] this->mv9BackBuffer;
 }
 
 // ---------------------------------------------------------------------------------------------
 
 // Retrieves the number of flows that were dropped as a result of a full back buffer.
-const unsigned int NetflowResultContainer::GetDroppedFlowCount() const
+const unsigned long NetflowResultContainer::GetDroppedFlowCount() const
 {
 	return this->mDroppedFlows;
 }
@@ -56,27 +61,33 @@ const unsigned int NetflowResultContainer::GetDroppedFlowCount() const
 // ---------------------------------------------------------------------------------------------
 
 // Retrieves the size of the Netflow v1 back buffer, without copying anything.
-const unsigned int NetflowResultContainer::GetNetflow1BackBufferSize() const
+const unsigned long NetflowResultContainer::GetNetflow1BackBufferSize() const
 {
 	return this->mv1BufferSize;
 }
 
 // Retrieves the size of the Netflow v5 back buffer, without copying anything.
-const unsigned int NetflowResultContainer::GetNetflow5BackBufferSize() const
+const unsigned long NetflowResultContainer::GetNetflow5BackBufferSize() const
 {
 	return this->mv5BufferSize;
 }
 
 // Retrieves the size of the Netflow v7 back buffer, without copying anything.
-const unsigned int NetflowResultContainer::GetNetflow7BackBufferSize() const
+const unsigned long NetflowResultContainer::GetNetflow7BackBufferSize() const
 {
 	return this->mv7BufferSize;
+}
+
+// Retrieves the size of the Netflow v9 back buffer, without copying anything.
+const unsigned long NetflowResultContainer::GetNetflow9BackBufferSize() const
+{
+	return this->mv9BufferSize;
 }
 
 // ---------------------------------------------------------------------------------------------
 
 // Retrieves all processed Netflow v1 flows that are inside the back buffer.
-const unsigned int NetflowResultContainer::GetNetflow1BackBuffer(Vector<Netflow1Storage>& frontBuffer)
+const unsigned long NetflowResultContainer::GetNetflow1BackBuffer(Vector<Netflow1Storage>& frontBuffer)
 {
 	// Lock the back buffer.
 	this->mv1CS.Enter();
@@ -99,7 +110,7 @@ const unsigned int NetflowResultContainer::GetNetflow1BackBuffer(Vector<Netflow1
 }
 
 // Retrieves all processed Netflow v5 flows that are inside the back buffer.
-const unsigned int NetflowResultContainer::GetNetflow5BackBuffer(Vector<Netflow5Storage>& frontBuffer)
+const unsigned long NetflowResultContainer::GetNetflow5BackBuffer(Vector<Netflow5Storage>& frontBuffer)
 {
 	// Lock the back buffer.
 	this->mv5CS.Enter();
@@ -122,7 +133,7 @@ const unsigned int NetflowResultContainer::GetNetflow5BackBuffer(Vector<Netflow5
 }
 
 // Retrieves all processed Netflow v7 flows that are inside the back buffer.
-const unsigned int NetflowResultContainer::GetNetflow7BackBuffer(Vector<Netflow7Storage>& frontBuffer)
+const unsigned long NetflowResultContainer::GetNetflow7BackBuffer(Vector<Netflow7Storage>& frontBuffer)
 {
 	// Lock the back buffer.
 	this->mv7CS.Enter();
@@ -144,16 +155,39 @@ const unsigned int NetflowResultContainer::GetNetflow7BackBuffer(Vector<Netflow7
 	return frontBuffer.GetCount();
 }
 
+// Retrieves all processed Netflow v9 flows that are inside the back buffer.
+const unsigned long NetflowResultContainer::GetNetflow9BackBuffer(Vector<Netflow9Storage>& frontBuffer)
+{
+	// Lock the back buffer.
+	this->mv9CS.Enter();
+	
+	// Move all entries in the back buffer to the front buffer.
+	//frontBuffer.Reserve(this->mv9BufferSize);
+	for (unsigned int i = 0; i < this->mv9BufferSize; ++i)
+	{
+		//frontBuffer << this->mv9BackBuffer[i];
+	}
+	
+	// Clear the back buffer.
+	this->mv9BufferSize = 0;
+	
+	// Release the lock.
+	this->mv9CS.Leave();
+	
+	// Return the amount of flows copied.
+	return frontBuffer.GetCount();
+}
+
 // ---------------------------------------------------------------------------------------------
 
 // Pushes processed Netflow v1 flows to the back buffer.
-const unsigned int NetflowResultContainer::PushNetflow1Flows(const Vector<Netflow1Storage>& flows)
+const unsigned long NetflowResultContainer::PushNetflow1Flows(const Vector<Netflow1Storage>& flows)
 {
 	const int flowCount = flows.GetCount();
 	const int possible = BACK_BUFFER_SIZE_PER_VERSION - this->mv1BufferSize;
 	int number = 0;
 	
-	// Check whether there are still flows allowed in the Netflow v5 back buffer.
+	// Check whether there are still flows allowed in the Netflow v1 back buffer.
 	if (possible > 0)
 	{
 		// Lock the back buffer.
@@ -182,7 +216,7 @@ const unsigned int NetflowResultContainer::PushNetflow1Flows(const Vector<Netflo
 }
 
 // Pushes processed Netflow v5 flows to the back buffer.
-const unsigned int NetflowResultContainer::PushNetflow5Flows(const Vector<Netflow5Storage>& flows)
+const unsigned long NetflowResultContainer::PushNetflow5Flows(const Vector<Netflow5Storage>& flows)
 {
 	const int flowCount = flows.GetCount();
 	const int possible = BACK_BUFFER_SIZE_PER_VERSION - this->mv5BufferSize;
@@ -217,13 +251,13 @@ const unsigned int NetflowResultContainer::PushNetflow5Flows(const Vector<Netflo
 }
 
 // Pushes processed Netflow v7 flows to the back buffer.
-const unsigned int NetflowResultContainer::PushNetflow7Flows(const Vector<Netflow7Storage>& flows)
+const unsigned long NetflowResultContainer::PushNetflow7Flows(const Vector<Netflow7Storage>& flows)
 {
 	const int flowCount = flows.GetCount();
 	const int possible = BACK_BUFFER_SIZE_PER_VERSION - this->mv7BufferSize;
 	int number = 0;
 	
-	// Check whether there are still flows allowed in the Netflow v5 back buffer.
+	// Check whether there are still flows allowed in the Netflow v7 back buffer.
 	if (possible > 0)
 	{
 		// Lock the back buffer.
@@ -241,6 +275,41 @@ const unsigned int NetflowResultContainer::PushNetflow7Flows(const Vector<Netflo
 		
 		// Release the lock.
 		this->mv7CS.Leave();
+	}
+	
+	// Count the number of dropped flows.
+	this->mDroppedFlows += flowCount - number;
+	
+	// Return the number of flows that were actually added to the back buffer.
+	// The flows that were not added were dropped because the buffer was full.
+	return number;
+}
+
+// Pushes processed Netflow v9 flows to the back buffer.
+const unsigned long NetflowResultContainer::PushNetflow9Flows(const Vector<Netflow9Storage>& flows)
+{
+	const int flowCount = flows.GetCount();
+	const int possible = BACK_BUFFER_SIZE_PER_VERSION - this->mv9BufferSize;
+	int number = 0;
+	
+	// Check whether there are still flows allowed in the Netflow v9 back buffer.
+	if (possible > 0)
+	{
+		// Lock the back buffer.
+		this->mv9CS.Enter();
+		
+		// Copy flows to the back buffer.
+		number = min(possible, flowCount);
+		for (int i = 0; i < number; ++i)
+		{
+			//this->mv9BackBuffer[this->mv9BufferSize + i] = flows[i];
+		}
+		
+		// Change the buffer size.
+		this->mv9BufferSize += number;
+		
+		// Release the lock.
+		this->mv9CS.Leave();
 	}
 	
 	// Count the number of dropped flows.

@@ -424,9 +424,6 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 	// Check whether the packet size and buffer are valid.
 	if (packet && (length > 0 && length >= sizeof(NETFLOW9_HEADER)))
 	{
-		// Output vector for the processed flows.
-		Vector<Netflow9Storage> outRecords;
-
 		// Retrieve flows from the packet.
 		const PNETFLOW9_HEADER nfHeader = (PNETFLOW9_HEADER)packet;
 
@@ -471,15 +468,27 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 				// Find out which template should be used to parse this flowset.
 				const FlowTemplate* const flowTemplate = GlobalTemplateCache->FindTemplate(9, flowSet.FlowsetID);
 				
-				// Parse flow data records.
-				PNETFLOW9_DATA_FLOWSET_HEADER flowRecord = (PNETFLOW9_DATA_FLOWSET_HEADER)(packet + pktIt);
-				for (int i = 0; i < flowSet.Length; ++i)
+				// Only continue parsing the flows in this packet if we actually have a template to do so.
+				if (flowTemplate)
 				{
-					char output[64];
-					if (ParseNetflow9Field(flowRecord->FieldType, flowTemplate->GetFieldSize(flowRecord->FieldType), flowRecord->FieldValue, output))
+					// Output vector for the processed flows.
+					Vector<Netflow9Storage> outRecords;
+					
+					// Parse flow data records.
+					PNETFLOW9_DATA_FLOWSET_HEADER flowRecord = (PNETFLOW9_DATA_FLOWSET_HEADER)(packet + pktIt);
+					for (int i = 0; i < flowSet.Length; ++i)
 					{
-						// Parse succeeded...
+						// Try to parse the current field.
+						String output;
+						if (ParseNetflow9Field(flowRecord->FieldType, flowTemplate->GetFieldSize(flowRecord->FieldType), flowRecord->FieldValue, output))
+						{
+							// Succeeded in parsing, add the output to the flow storage.
+							
+						}
 					}
+					
+					// Push the processed flows to the result container.
+					GlobalResultContainer->PushNetflow9Flows(outRecords);
 				}
 			}
 			else
@@ -487,16 +496,18 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 				// not valid?
 			}
 		}
-		
-		// Push the processed flows to the result container.
-		//GlobalResultContainer->PushNetflow9Flows(outRecords);
 	}
 }
 
 // Parses an IPFIX packet.
 void NetflowParser::ParseIPFIXPacket(const char* packet, const unsigned int length)
 {
-
+	// Check whether the packet size and buffer are valid.
+	if (packet && (length > 0 && length >= sizeof(IPFIX_HEADER)))
+	{
+		// Retrieve flows from the packet.
+		const PIPFIX_HEADER nfHeader = (PIPFIX_HEADER)packet;
+	}
 }
 
 // ---------------------------------------------------------------------------------------------

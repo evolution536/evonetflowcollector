@@ -21,6 +21,7 @@ using namespace Upp;
 
 #include "Netflow9.h"
 #include "NetflowParser.h"
+#include "UtilityFunctions.h"
 
 // Parses a Netflow v9 options template.
 const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader, const unsigned int length)
@@ -59,30 +60,31 @@ const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER tem
 
 // Attemps to parse a Netflow v9 field using its field type and length. Output will be dynamically returned.
 // The length of the buffer passed as output should be at least 64 bytes in size.
-const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData, void* output)
+const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData, String& output)
 {
 	// Decide how to parse the specified field based on the length of the field, and secondly,
 	// on the type of field. For example, parse IPv4 addresses differently from packet count.
 	if (fieldLength == 1)
 	{
+		const unsigned char value = *(unsigned char*)fieldData;
+		
 		// There are multiple options for size 1.
 		if (fieldType == PROTOCOL)
 		{
-			const char* proto = NetflowParser::GetProtocolStringFromNumber(*(unsigned char*)fieldData);
-			output = (void*)proto;
+			output = NetflowParser::GetProtocolStringFromNumber(value);
 			return true;
-		}
-		else if (fieldType == SRC_TOS || fieldType == DST_TOS)
-		{
-			
 		}
 		else if (fieldType == TCP_FLAGS)
 		{
 			
 		}
-		else if (fieldType == SRC_MASK || fieldType == DST_MASK || fieldType == IPV6_SRC_MASK || fieldType == IPV6_DST_MASK)
+		else if (fieldType == SRC_MASK || fieldType == DST_MASK || fieldType == IPV6_SRC_MASK || fieldType == IPV6_DST_MASK
+				|| fieldType == ENGINE_ID || fieldType == FLOW_SAMPLER_ID || fieldType == FLOW_SAMPLER_MODE
+				|| fieldType == MIN_TTL || fieldType == MAX_TTL || fieldType == SRC_TOS || fieldType == DST_TOS)
 		{
-			
+			// Just give numeric output.
+			output = IntStr(value);
+			return true;
 		}
 		else if (fieldType == MUL_IGMP_TYPE)
 		{
@@ -90,68 +92,127 @@ const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned sho
 		}
 		else if (fieldType == SAMPLING_ALGORITHM)
 		{
+			// Choose the sampling algorithm string representation according to the specified value.
+			if (value == DETERMISTIC_SAMPLING)
+			{
+				output = "Deterministic Sampling";				
+			}
+			else if (value == RANDOM_SAMPLING)
+			{
+				output = "Random Sampling";
+			}
+			else
+			{
+				output = "Unknown";
+			}
 			
+			return true;
 		}
 		else if (fieldType == ENGINE_TYPE)
 		{
+			// Choose the engine type string representation according to the specified value.
+			if (value == ENGINE_TYPE_RP)
+			{
+				output = "RP";
+			}
+			else if (value == ENGINE_TYPE_LINE_CARD)
+			{
+				output = "VIP/Linecard";
+			}
+			else
+			{
+				output = "Unknown";
+			}
 			
-		}
-		else if (fieldType == ENGINE_ID)
-		{
-			
+			return true;
 		}
 		else if (fieldType == MPLS_TOP_LABEL_TYPE)
 		{
+			// Choose the MPLS top label type string representation according to the specified value.
+			if (value == MPLS_TOP_LABEL_TYPE_TEMIDPT)
+			{
+				output = "TEMIDPT";
+			}
+			else if (value == MPLS_TOP_LABEL_TYPE_ATOM)
+			{
+				output = "ATOM";
+			}
+			else if (value == MPLS_TOP_LABEL_TYPE_VPN)
+			{
+				output = "VPN";
+			}
+			else if (value == MPLS_TOP_LABEL_TYPE_BGP)
+			{
+				output = "BGP";
+			}
+			else if (value == MPLS_TOP_LABEL_TYPE_LDP)
+			{
+				output = "LDP";
+			}
+			else
+			{
+				output = "Unknown";
+			}
 			
-		}
-		else if (fieldType == FLOW_SAMPLER_ID)
-		{
-			
-		}
-		else if (fieldType == FLOW_SAMPLER_MODE)
-		{
-			
-		}
-		else if (fieldType == MIN_TTL || fieldType == MAX_TTL)
-		{
-			
+			return true;
 		}
 		else if (fieldType == IP_PROTOCOL_VERSION)
 		{
+			// Choose the IP version string representation according to the specified value.
+			if (value == IPV6)
+			{
+				output = "IPv6";
+			}
+			else
+			{
+				output = "IPv4";
+			}
 			
+			return true;
 		}
 		else if (fieldType == DIRECTION)
 		{
+			// Choose the flow direction string representation according to the specified value.
+			if (value == DIRECTION_INGRESS)
+			{
+				output = "Ingress";
+			}
+			else if (value == DIRECTION_EGRESS)
+			{
+				output = "Egress";
+			}
+			else
+			{
+				output = "Unknown";
+			}
 			
+			return true;
 		}
 	}
 	else if (fieldLength == 2)
 	{
+		const unsigned short value = ntohs(*(unsigned short*)fieldData);
+		
 		// There are multiple options for size 2.
-		switch (fieldType)
+		if (fieldType == L4_SRC_PORT || fieldType == L4_DST_PORT || fieldType == SRC_AS || fieldType == DST_AS
+			|| fieldType == MIN_PKT_LENGTH || fieldType == MAX_PKT_LENGTH || fieldType == FLOW_ACTIVE_TIMEOUT
+			|| fieldType == FLOW_INACTIVE_TIMEOUT || fieldType == SRC_VLAN || fieldType == DST_VLAN)
 		{
-			case L4_SRC_PORT:
-			case L4_DST_PORT:
-				break;
-			case SRC_AS:
-			case DST_AS:
-				break;
-			case MIN_PKT_LENGTH:
-			case MAX_PKT_LENGTH:
-				break;
-			case ICMP_TYPE:
-				break;
-			case FLOW_ACTIVE_TIMEOUT:
-			case FLOW_INACTIVE_TIMEOUT:
-				break;
-			case IPV4_IDENT:
-				break;
-			case SRC_VLAN:
-			case DST_VLAN:
-				break;
-			case INPUT_SNMP:
-			case OUTPUT_SNMP:
-				break;
+			// Just give numeric output.
+			output = IntStr(value);
+			return true;
+		}
+		else if (fieldType == ICMP_TYPE)
+		{
+			
+		}
+		else if (fieldType == IPV4_IDENT)
+		{
+			
+		}
+		else if (fieldType == INPUT_SNMP || fieldType == OUTPUT_SNMP)
+		{
+			
 		}
 	}
 	else if (fieldLength == 3)
@@ -176,63 +237,61 @@ const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned sho
 	}
 	else if (fieldLength == 4)
 	{
+		const unsigned long value = ntohl(*(unsigned long*)fieldData);
+		
 		// There are multiple options for size 4.
-		switch (fieldType)
+		if (fieldType == SRC_AS || fieldType == DST_AS || fieldType == IN_BYTES || fieldType == IN_PKTS
+			|| fieldType == MUL_DST_PKTS || fieldType == MUL_DST_BYTES || fieldType == OUT_BYTES
+			|| fieldType == OUT_PKTS || fieldType == SAMPLING_INTERVAL || fieldType == TOTAL_BYTES_EXP
+			|| fieldType == TOTAL_PKTS_EXP || fieldType == TOTAL_FLOWS_EXP || fieldType == FLOW_SAMPLER_RANDOM_INTERVAL
+			|| fieldType == IN_PERMANENT_BYTES || fieldType == IN_PERMANENT_PKTS || fieldType == FLOWS)
 		{
-			case SRC_AS:
-			case DST_AS:
-				break;
-			case IN_BYTES:
-			case IN_PKTS:
-			case MUL_DST_PKTS:
-			case MUL_DST_BYTES:
-			case OUT_BYTES:
-			case OUT_PKTS:
-			case SAMPLING_INTERVAL:
-			case TOTAL_BYTES_EXP:
-			case TOTAL_PKTS_EXP:
-			case TOTAL_FLOWS_EXP:
-			case FLOW_SAMPLER_RANDOM_INTERVAL:
-			case IN_PERMANENT_BYTES:
-			case IN_PERMANENT_PKTS:
-				break;
-			case FLOWS:
-				break;
-			case IPV4_SRC_ADDR:
-			case IPV4_DST_ADDR:
-			case IPV4_NEXT_HOP:
-			case BGP_IPV4_NEXT_HOP:
-			case IPV4_SRC_PREFIX:
-			case IPV4_DST_PREFIX:
-			case MPLS_TOP_LABEL_IP_ADDR:
-				break;
-			case LAST_SWITCHED:
-			case FIRST_SWITCHED:
-				break;
-			case IPV6_OPTION_HEADERS:
-				break;
-			case INPUT_SNMP:
-			case OUTPUT_SNMP:
-				break;
+			// Just give numeric output.
+			output = IntStr(value);
+			return true;
+		}
+		else if (fieldType == IPV4_SRC_ADDR || fieldType == IPV4_DST_ADDR || fieldType == IPV4_DST_ADDR
+			|| fieldType == IPV4_NEXT_HOP || fieldType == BGP_IPV4_NEXT_HOP|| fieldType == IPV4_SRC_PREFIX
+			|| fieldType == IPV4_DST_PREFIX|| fieldType == MPLS_TOP_LABEL_IP_ADDR)
+		{
+			// Parse the data as an IPv4 address. (byte swapping should not be done here!)
+			output = Ipv4ToString(*(unsigned long*)fieldData);
+			return true;
+		}
+		else if (fieldType == LAST_SWITCHED || fieldType == FIRST_SWITCHED)
+		{
+			// The field value is a UNIX timestamp.
+			output = Format(TimeFromUTC(value));
+			return true;
+		}
+		else if (fieldType == INPUT_SNMP || fieldType == OUTPUT_SNMP)
+		{
+			
+		}
+		else if (fieldType == IPV6_OPTION_HEADERS)
+		{
+			
 		}
 	}
 	else if (fieldLength == 6)
 	{
 		// Length 6 can only be a MAC address.
+		output = MacAddressToString((unsigned char*)fieldData);
+		return true;
 	}
 	else if (fieldLength == 16)
 	{
 		// Length 16 can only be an IPv6 address.
+		output = Ipv6ToString(*(IPV6ADDRESS*)fieldData);
+		return true;
 	}
 	else
 	{
 		// No fixed-size field matched the specified field, so it is probably a string.
-		switch (fieldType)
+		if (fieldType == IF_NAME || fieldType == IF_DESC || SAMPLER_NAME)
 		{
-			case IF_NAME:
-			case IF_DESC:
-			case SAMPLER_NAME:
-				break;
+			output.Cat((char*)fieldData, fieldLength);
+			return true;
 		}
 	}
 	

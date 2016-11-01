@@ -188,6 +188,30 @@ typedef struct _NETFLOW9_OPTIONS_TEMPLATE_HEADER
 // Netflow v9 parsing functions.
 const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader, const unsigned int length);
 const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader, const unsigned int length, VectorMap<unsigned short, unsigned short>& fields);
-const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData, void* output);
+const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData, String& output);
+
+// Sampling algorithm definitions.
+#define DETERMISTIC_SAMPLING			1
+#define RANDOM_SAMPLING					2
+
+// Engine type definitions.
+#define ENGINE_TYPE_RP					0
+#define ENGINE_TYPE_LINE_CARD			1
+
+// Internet Protocol (IP) protocol version definitions.
+#define IPV4							4
+#define IPV6							6
+
+// Flow direction definitions.
+#define DIRECTION_INGRESS				0
+#define DIRECTION_EGRESS				1
+
+// Some MPLS definitions.
+#define MPLS_TOP_LABEL_TYPE_UNKNOWN		0
+#define MPLS_TOP_LABEL_TYPE_TEMIDPT		1
+#define MPLS_TOP_LABEL_TYPE_ATOM		2
+#define MPLS_TOP_LABEL_TYPE_VPN			3
+#define MPLS_TOP_LABEL_TYPE_BGP			4
+#define MPLS_TOP_LABEL_TYPE_LDP			5
 
 #endif

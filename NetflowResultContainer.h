@@ -69,6 +69,9 @@ struct Netflow9Storage : Moveable<Netflow9Storage>
 {
 	// The flow sequence number.
 	unsigned long FlowSequence;
+	
+	// Collection of fields including their values.
+	VectorMap<unsigned short, String> FlowStorage;
 };
 
 // Represents an IPFIX storage structure that includes the sequence number.
@@ -82,21 +85,24 @@ class NetflowResultContainer
 {
 private:
 	// Back buffer size variables.
-	unsigned int mv1BufferSize;
-	unsigned int mv5BufferSize;
-	unsigned int mv7BufferSize;
+	unsigned long mv1BufferSize;
+	unsigned long mv5BufferSize;
+	unsigned long mv7BufferSize;
+	unsigned long mv9BufferSize;
 	
 	// Back buffer definitions.
 	Netflow1Storage* mv1BackBuffer;
 	Netflow5Storage* mv5BackBuffer;
 	Netflow7Storage* mv7BackBuffer;
+	Netflow9Storage* mv9BackBuffer;
 	
 	// Critical sections matching the back buffers.
 	CriticalSection mv1CS;
 	CriticalSection mv5CS;
 	CriticalSection mv7CS;
+	CriticalSection mv9CS;
 	
-	unsigned int mDroppedFlows;
+	unsigned long mDroppedFlows;
 	
 	NetflowResultContainer();
 	~NetflowResultContainer();
@@ -110,21 +116,24 @@ public:
 		return &instance;
 	}
 	
-	const unsigned int GetDroppedFlowCount() const;
+	const unsigned long GetDroppedFlowCount() const;
 	
 	// Retrieval functions.
-	const unsigned int GetNetflow1BackBufferSize() const;
-	const unsigned int GetNetflow5BackBufferSize() const;
-	const unsigned int GetNetflow7BackBufferSize() const;
+	const unsigned long GetNetflow1BackBufferSize() const;
+	const unsigned long GetNetflow5BackBufferSize() const;
+	const unsigned long GetNetflow7BackBufferSize() const;
+	const unsigned long GetNetflow9BackBufferSize() const;
 	
-	const unsigned int GetNetflow1BackBuffer(Vector<Netflow1Storage>& frontBuffer);
-	const unsigned int GetNetflow5BackBuffer(Vector<Netflow5Storage>& frontBuffer);
-	const unsigned int GetNetflow7BackBuffer(Vector<Netflow7Storage>& frontBuffer);
+	const unsigned long GetNetflow1BackBuffer(Vector<Netflow1Storage>& frontBuffer);
+	const unsigned long GetNetflow5BackBuffer(Vector<Netflow5Storage>& frontBuffer);
+	const unsigned long GetNetflow7BackBuffer(Vector<Netflow7Storage>& frontBuffer);
+	const unsigned long GetNetflow9BackBuffer(Vector<Netflow9Storage>& frontBuffer);
 	
 	// Push functions.
-	const unsigned int PushNetflow1Flows(const Vector<Netflow1Storage>& flows);
-	const unsigned int PushNetflow5Flows(const Vector<Netflow5Storage>& flows);
-	const unsigned int PushNetflow7Flows(const Vector<Netflow7Storage>& flows);
+	const unsigned long PushNetflow1Flows(const Vector<Netflow1Storage>& flows);
+	const unsigned long PushNetflow5Flows(const Vector<Netflow5Storage>& flows);
+	const unsigned long PushNetflow7Flows(const Vector<Netflow7Storage>& flows);
+	const unsigned long PushNetflow9Flows(const Vector<Netflow9Storage>& flows);
 };
 
 #endif
