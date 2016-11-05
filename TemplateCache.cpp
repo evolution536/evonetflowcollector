@@ -37,13 +37,26 @@ void TemplateCache::AddTemplate(const unsigned short version, const unsigned sho
 	key.Version = version;
 	key.TemplateID = templateID;
 	
-	// No need to check for existence of the specified template, the map will do that for us.
+	// One thread should be looking at templates at a time.
+	this->mTemplateCS.Enter();
+	
+	// Check whether the template already exists. If not, we should add it.
+	const int index = this->mFlowTemplates.Find(key);
+	if (index < 0)
+	{
+		this->mFlowTemplates.Add(key);
+	}
+	
+	// Change the properties of the template.
 	FlowTemplate& templ = this->mFlowTemplates.Get(key);
 	templ.Type = type;
 	
 	// Clear the current field list and insert the new one.
 	templ.FieldCache.Clear();
 	templ.FieldCache <<= dataFields;
+	
+	// Release the lock.
+	this->mTemplateCS.Leave();
 }
 
 // Looks for the specified template in the cache, and returns a pointer if it is found, or NULL otherwise.

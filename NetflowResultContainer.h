@@ -64,14 +64,43 @@ struct Netflow7Storage : Moveable<Netflow7Storage>
 	NETFLOW7_FLOW_RECORD FlowStorage;
 };
 
+// Represents a combination of a field type with a parsed string representation of its value.
+struct FieldStorageStruct
+{
+	// The field value in parsed state.
+	char FieldValue[64];
+	
+	// Let's put a copy operator here, to simplify the assignment code.
+	FieldStorageStruct& operator=(const FieldStorageStruct& other)
+	{
+		memcpy(this->FieldValue, other.FieldValue, sizeof(this->FieldValue));
+		return *this;
+	};
+};
+
 // Represents a Netflow v9 storage structure that includes the sequence number.
 struct Netflow9Storage : Moveable<Netflow9Storage>
 {
+	// The timestamp of the flow.
+	unsigned long TimeStamp;
+	
 	// The flow sequence number.
 	unsigned long FlowSequence;
 	
 	// Collection of fields including their values.
-	VectorMap<unsigned short, String> FlowStorage;
+	FieldStorageStruct FlowStorage[128];
+	
+	// Assignment operator here as well.
+	Netflow9Storage& operator=(const Netflow9Storage& other)
+	{
+		this->FlowSequence = other.FlowSequence;
+		for (int i = 0; i < sizeof(this->FlowStorage) / sizeof(this->FlowStorage[0]); ++i)
+		{
+			this->FlowStorage[i] = other.FlowStorage[i];
+		}
+		
+		return *this;
+	};
 };
 
 // Represents an IPFIX storage structure that includes the sequence number.

@@ -1,6 +1,8 @@
 Evo Netflow Collector - TODO list:
 
 - Transparency about which logging method is used;
+- v9 flowset length cannot be 0;
+- Byte count for netflow v9 flow should be in/out matching direction;
 - Test with full blown Paessler generator;
 - UMK script for compiling!
 - Command line options to only accept specific versions of Netflow;

@@ -32,22 +32,22 @@ enum TemplateType
 // Represents a template for Netflow v9 or IPFIX.
 struct FlowTemplate : Moveable<FlowTemplate>
 {
-	// The version of Netflow of the template: 9 for Netflow v9 and 10 for IPFIX.
-	unsigned short Version;
-	
 	// The type of template, data or options.
 	TemplateType Type;
-	
-	// The template ID of the template.
-	unsigned short TemplateID;
 	
 	// The fields of this template.
 	VectorMap<unsigned short, unsigned short> FieldCache;
 	
-	// Retrieves the field size of a field in this template.
-	const unsigned short GetFieldSize(const unsigned short fieldType) const
+	// Retrieves the field type of a field in this template.
+	const unsigned short GetFieldType(const int index) const
 	{
-		return this->FieldCache.Get(fieldType);
+		return this->FieldCache.GetKey(index);
+	};
+	
+	// Retrieves the field size of a field in this template.
+	const unsigned short GetFieldSize(const int index) const
+	{
+		return this->FieldCache[index];
 	};
 };
 
@@ -63,7 +63,8 @@ struct TemplateCacheKey : Moveable<TemplateCacheKey>
 	// We use this struct as map key, so it needs to return a hash value of some kind.
 	unsigned GetHashValue() const
 	{
-		return (this->Version * Random(256) + this->TemplateID * Random(256)) % 256;
+		// Multiply sum of version and template ID by some prime number.
+		return this->Version + this->TemplateID * 23;
 	};
 	
 	// Keys need to be comparable.
@@ -84,6 +85,8 @@ private:
 	
 	TemplateCache(TemplateCache const&);
 	void operator=(TemplateCache const&);
+	
+	CriticalSection mTemplateCS;
 public:
 	static TemplateCache* GetInstance()
 	{

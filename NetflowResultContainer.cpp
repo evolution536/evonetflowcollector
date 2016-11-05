@@ -162,10 +162,10 @@ const unsigned long NetflowResultContainer::GetNetflow9BackBuffer(Vector<Netflow
 	this->mv9CS.Enter();
 	
 	// Move all entries in the back buffer to the front buffer.
-	//frontBuffer.Reserve(this->mv9BufferSize);
+	frontBuffer.Reserve(this->mv9BufferSize);
 	for (unsigned int i = 0; i < this->mv9BufferSize; ++i)
 	{
-		//frontBuffer << this->mv9BackBuffer[i];
+		frontBuffer << this->mv9BackBuffer[i];
 	}
 	
 	// Clear the back buffer.
@@ -302,7 +302,7 @@ const unsigned long NetflowResultContainer::PushNetflow9Flows(const Vector<Netfl
 		number = min(possible, flowCount);
 		for (int i = 0; i < number; ++i)
 		{
-			//this->mv9BackBuffer[this->mv9BufferSize + i] = flows[i];
+			this->mv9BackBuffer[this->mv9BufferSize + i] = flows[i];
 		}
 		
 		// Change the buffer size.

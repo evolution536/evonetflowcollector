@@ -161,7 +161,6 @@ typedef struct _NETFLOW9_TEMPLATE_RECORD
 // Netflow v9 data flowset header.
 typedef struct _NETFLOW9_DATA_FLOWSET_HEADER
 {
-	unsigned short FieldType;
 	unsigned char FieldValue[2];
 } NETFLOW9_DATA_FLOWSET_HEADER, *PNETFLOW9_DATA_FLOWSET_HEADER;
 

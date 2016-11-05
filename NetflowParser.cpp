@@ -427,74 +427,132 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 		// Retrieve flows from the packet.
 		const PNETFLOW9_HEADER nfHeader = (PNETFLOW9_HEADER)packet;
 
-		// Save the sequence number of this packet.
+		// Save the sequence number and timestamp of this packet.
 		const unsigned long seqnum = ntohl(nfHeader->PackageSequence);
+		const unsigned long timestamp = ntohl(nfHeader->UnixSeconds);
+		
+		// Keep track of how many flows are in this packet.
+		unsigned int sequenceCounter = 0;
 
 		// Walk the packet flowsets, making sure it does not leave the bounds of the packet buffer.
 		unsigned int pktIt = sizeof(NETFLOW9_HEADER);
 		while (pktIt < length)
 		{
 			// Let's process the next flowset.
-			const NETFLOW9_FLOWSET_HEADER flowSet = *(PNETFLOW9_FLOWSET_HEADER)(packet + pktIt);
-			pktIt += sizeof(NETFLOW9_FLOWSET_HEADER);
+			PNETFLOW9_FLOWSET_HEADER pFlowSet = (PNETFLOW9_FLOWSET_HEADER)(packet + pktIt);
+			const unsigned short flowsetId = ntohs(pFlowSet->FlowsetID);
+			const unsigned short flowSetLength = ntohs(pFlowSet->Length);
 
 			// Is this flowset an option template?
-			if (flowSet.FlowsetID == 1)
+			if (flowsetId == 1)
 			{
 				// Parse options template flowset.
-				NETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = *(PNETFLOW9_OPTIONS_TEMPLATE_HEADER)(packet + pktIt);
+				PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = (PNETFLOW9_OPTIONS_TEMPLATE_HEADER)(packet + pktIt);
 				pktIt += sizeof(NETFLOW9_OPTIONS_TEMPLATE_HEADER);
-				if (!ParseNetflow9OptionsTemplate(&optionsHeader, length - pktIt))
+				if (!ParseNetflow9OptionsTemplate(optionsHeader, length - pktIt))
 				{
 					// parse succeeded...
 				}
 			}
 			// Is this flowset a data template?
-			else if (flowSet.FlowsetID <= 255)
+			else if (flowsetId <= 255)
 			{
 				// Parse data template flowset.
-				NETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = *(PNETFLOW9_TEMPLATE_FLOWSET_HEADER)(packet + pktIt);
-				pktIt += sizeof(NETFLOW9_TEMPLATE_FLOWSET_HEADER);
-				VectorMap<unsigned short, unsigned short> dataFields;
-				if (ParseNetflow9DataTemplate(&templateHeader, length - pktIt, dataFields))
+				unsigned int flowsetIt = 0;
+				while (flowsetIt + sizeof(NETFLOW9_FLOWSET_HEADER) < flowSetLength)
 				{
-					// Succeeded in parsing the template, now pass it to the template cache.
-					GlobalTemplateCache->AddTemplate(9, templateHeader.TemplateID, TEMPLATE_DATA, dataFields);
+					const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = (PNETFLOW9_TEMPLATE_FLOWSET_HEADER)(packet + pktIt + sizeof(NETFLOW9_FLOWSET_HEADER) + flowsetIt);
+					flowsetIt += sizeof(NETFLOW9_TEMPLATE_FLOWSET_HEADER);
+
+					// Find out how many fields are in this template record.
+					const unsigned short templateID = ntohs(templateHeader->TemplateID);
+					const unsigned short fieldCount = ntohs(templateHeader->FieldCount);
+
+					VectorMap<unsigned short, unsigned short> dataFields;
+					if (ParseNetflow9DataTemplate(templateHeader, length - pktIt, dataFields))
+					{
+						// Succeeded in parsing the template, now pass it to the template cache.
+						GlobalTemplateCache->AddTemplate(9, templateID, TEMPLATE_DATA, dataFields);
+					}
+
+					// Increment the flowset iterator.
+					flowsetIt += fieldCount * sizeof(NETFLOW9_TEMPLATE_RECORD);
 				}
 			}
 			// Is this a flowset a collection of flow records?
-			else if (flowSet.FlowsetID > 255)
+			else if (flowsetId > 255)
 			{
-				// Find out which template should be used to parse this flowset.
-				const FlowTemplate* const flowTemplate = GlobalTemplateCache->FindTemplate(9, flowSet.FlowsetID);
+				const unsigned short flowCount = ntohs(nfHeader->FlowCount);
 				
-				// Only continue parsing the flows in this packet if we actually have a template to do so.
-				if (flowTemplate)
+				// Are there flows in this packet?
+				if (flowCount <= 30)
 				{
-					// Output vector for the processed flows.
-					Vector<Netflow9Storage> outRecords;
+					// Find out which template should be used to parse this flowset.
+					const FlowTemplate* const flowTemplate = GlobalTemplateCache->FindTemplate(9, flowsetId);
 					
-					// Parse flow data records.
-					PNETFLOW9_DATA_FLOWSET_HEADER flowRecord = (PNETFLOW9_DATA_FLOWSET_HEADER)(packet + pktIt);
-					for (int i = 0; i < flowSet.Length; ++i)
+					// Only continue parsing the flows in this packet if we actually have a template to do so.
+					if (flowTemplate)
 					{
-						// Try to parse the current field.
-						String output;
-						if (ParseNetflow9Field(flowRecord->FieldType, flowTemplate->GetFieldSize(flowRecord->FieldType), flowRecord->FieldValue, output))
+						// How many fields should there be in these flow records?
+						const unsigned short fieldCount = flowTemplate->FieldCache.GetCount();
+
+						// Output vector for the processed flows.
+						Vector<Netflow9Storage> outRecords;
+						outRecords.Reserve(flowCount);
+						
+						// Walk through the flowset in bytes.
+						unsigned int flowsetIt = 0;
+						while (flowsetIt + sizeof(NETFLOW9_FLOWSET_HEADER) < flowSetLength)
 						{
-							// Succeeded in parsing, add the output to the flow storage.
+							// Add a new entry in the flow storage.
+							Netflow9Storage& flow = outRecords.Add();
+							flow.TimeStamp = timestamp;
+							flow.FlowSequence = seqnum + sequenceCounter++;
 							
+							// Parse flow data records.
+							PNETFLOW9_DATA_FLOWSET_HEADER flowRecord = (PNETFLOW9_DATA_FLOWSET_HEADER)(packet + pktIt + sizeof(NETFLOW9_FLOWSET_HEADER) + flowsetIt);
+							for (int i = 0; i < fieldCount; ++i)
+							{
+								// Try to parse the current field.
+								String output;
+								const unsigned short fieldType = flowTemplate->GetFieldType(i);
+								const unsigned short fieldLength = flowTemplate->GetFieldSize(i);
+								if (ParseNetflow9Field(fieldType, fieldLength, flowRecord->FieldValue, output))
+								{
+									// Succeeded in parsing, add the output to the flow storage.
+									// Another sanity check just to be sure we stay in the compile-time-defined bounds.
+									if (fieldType < sizeof(flow.FlowStorage))
+									{
+										memcpy(flow.FlowStorage[fieldType].FieldValue, output.Begin()
+											, max((int)sizeof(flow.FlowStorage[fieldType].FieldValue), output.GetLength()));
+									}
+								}
+								
+								// Increment the pointer to point to the next field.
+								flowsetIt += fieldLength;
+								flowRecord = (PNETFLOW9_DATA_FLOWSET_HEADER)((char*)flowRecord + fieldLength);
+							}
+
+							// There could be a padding at the end of the flowset to align it to 32-bits.
+							const unsigned int leftOver = flowSetLength - (flowsetIt + sizeof(NETFLOW9_FLOWSET_HEADER));
+							if (leftOver < sizeof(int))
+							{
+								flowsetIt += leftOver;
+							}
 						}
+						
+						// Push the processed flows to the result container.
+						GlobalResultContainer->PushNetflow9Flows(outRecords);
 					}
-					
-					// Push the processed flows to the result container.
-					GlobalResultContainer->PushNetflow9Flows(outRecords);
 				}
 			}
 			else
 			{
 				// not valid?
 			}
+
+			// Increment the packet iterator.
+			pktIt += flowSetLength;
 		}
 	}
 }
