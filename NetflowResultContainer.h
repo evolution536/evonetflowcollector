@@ -68,12 +68,12 @@ struct Netflow7Storage : Moveable<Netflow7Storage>
 struct FieldStorageStruct
 {
 	// The field value in parsed state.
-	char FieldValue[64];
+	String FieldValue;
 	
 	// Let's put a copy operator here, to simplify the assignment code.
 	FieldStorageStruct& operator=(const FieldStorageStruct& other)
 	{
-		memcpy(this->FieldValue, other.FieldValue, sizeof(this->FieldValue));
+		this->FieldValue = other.FieldValue;
 		return *this;
 	};
 };

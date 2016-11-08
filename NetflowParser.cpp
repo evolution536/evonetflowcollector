@@ -447,11 +447,21 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 			if (flowsetId == 1)
 			{
 				// Parse options template flowset.
-				PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = (PNETFLOW9_OPTIONS_TEMPLATE_HEADER)(packet + pktIt);
-				pktIt += sizeof(NETFLOW9_OPTIONS_TEMPLATE_HEADER);
-				if (!ParseNetflow9OptionsTemplate(optionsHeader, length - pktIt))
+				unsigned int flowsetIt = 0;
+				while (flowsetIt + sizeof(NETFLOW9_FLOWSET_HEADER) < flowSetLength)
 				{
-					// parse succeeded...
+					const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = (PNETFLOW9_OPTIONS_TEMPLATE_HEADER)(packet + pktIt);
+					flowsetIt += sizeof(NETFLOW9_OPTIONS_TEMPLATE_HEADER);
+					
+					// Find out how many fields are in this template record.
+					const unsigned short templateID = ntohs(optionsHeader->TemplateID);
+					const unsigned short scopeLength = ntohs(optionsHeader->OptionsScopeLength);
+					const unsigned short optionsLength = ntohs(optionsHeader->OptionsLength);
+					
+					if (!ParseNetflow9OptionsTemplate(optionsHeader, length - pktIt))
+					{
+						// parse succeeded...
+					}
 				}
 			}
 			// Is this flowset a data template?
@@ -523,8 +533,7 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 									// Another sanity check just to be sure we stay in the compile-time-defined bounds.
 									if (fieldType < sizeof(flow.FlowStorage))
 									{
-										memcpy(flow.FlowStorage[fieldType].FieldValue, output.Begin()
-											, max((int)sizeof(flow.FlowStorage[fieldType].FieldValue), output.GetLength()));
+										flow.FlowStorage[fieldType].FieldValue = output;
 									}
 								}
 								

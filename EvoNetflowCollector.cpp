@@ -172,10 +172,10 @@ void DebugOutputNetflow7(const Netflow7Storage* const flow)
 void DebugOutputNetflow9(const Netflow9Storage* const flow)
 {
 	// IPv4 or IPv6 flow?
-	Cout() << TimeFromUTC(flow->TimeStamp) << " FLOW v9 #" << flow->FlowSequence << ": " << Ipv4ToString(*(unsigned long*)flow->FlowStorage[IPV4_SRC_ADDR].FieldValue)
-		<< ":" << *(unsigned short*)flow->FlowStorage[L4_SRC_PORT].FieldValue << " <> " << Ipv4ToString(*(unsigned long*)flow->FlowStorage[IPV4_DST_ADDR].FieldValue)
-		<< ":" << *(unsigned short*)flow->FlowStorage[L4_DST_PORT].FieldValue << " Protocol: " << NetflowParser::GetProtocolStringFromNumber((flow->FlowStorage[PROTOCOL].FieldValue)[0])
-		<< " Packets: " << *(unsigned long*)flow->FlowStorage[IN_PKTS].FieldValue << "\n";
+	Cout() << TimeFromUTC(flow->TimeStamp) << " FLOW v9 #" << flow->FlowSequence << ": " << flow->FlowStorage[IPV4_SRC_ADDR].FieldValue
+		<< ":" << flow->FlowStorage[L4_SRC_PORT].FieldValue << " <> " << flow->FlowStorage[IPV4_DST_ADDR].FieldValue
+		<< ":" << flow->FlowStorage[L4_DST_PORT].FieldValue << " Protocol: " << flow->FlowStorage[PROTOCOL].FieldValue
+		<< " Bytes: " << flow->FlowStorage[IN_BYTES].FieldValue << " Packets: " << flow->FlowStorage[IN_PKTS].FieldValue << "\n";
 }
 
 // Writes IPFIX debug output for a specified flow.
@@ -404,7 +404,7 @@ CONSOLE_APP_MAIN
 				}
 
 				// Increment the bytes counter.
-				GlobalCollector.TotalBytes += *(unsigned long*)(localFlows[i].FlowStorage[IN_BYTES].FieldValue);
+				GlobalCollector.TotalBytes += StrInt(localFlows[i].FlowStorage[IN_BYTES].FieldValue);
 			}
 
 			// Increment the processed flow counter.
