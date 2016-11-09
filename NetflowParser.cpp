@@ -442,15 +442,15 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 			PNETFLOW9_FLOWSET_HEADER pFlowSet = (PNETFLOW9_FLOWSET_HEADER)(packet + pktIt);
 			const unsigned short flowsetId = ntohs(pFlowSet->FlowsetID);
 			const unsigned short flowSetLength = ntohs(pFlowSet->Length);
-
+			unsigned int flowsetIt = 0;
+			
 			// Is this flowset an option template?
 			if (flowsetId == 1)
 			{
 				// Parse options template flowset.
-				unsigned int flowsetIt = 0;
 				while (flowsetIt + sizeof(NETFLOW9_FLOWSET_HEADER) < flowSetLength)
 				{
-					const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = (PNETFLOW9_OPTIONS_TEMPLATE_HEADER)(packet + pktIt);
+					const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader = (PNETFLOW9_OPTIONS_TEMPLATE_HEADER)(packet + pktIt + sizeof(NETFLOW9_FLOWSET_HEADER) + flowsetIt);
 					flowsetIt += sizeof(NETFLOW9_OPTIONS_TEMPLATE_HEADER);
 					
 					// Find out how many fields are in this template record.
@@ -468,7 +468,6 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 			else if (flowsetId <= 255)
 			{
 				// Parse data template flowset.
-				unsigned int flowsetIt = 0;
 				while (flowsetIt + sizeof(NETFLOW9_FLOWSET_HEADER) < flowSetLength)
 				{
 					const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader = (PNETFLOW9_TEMPLATE_FLOWSET_HEADER)(packet + pktIt + sizeof(NETFLOW9_FLOWSET_HEADER) + flowsetIt);
@@ -511,7 +510,6 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 						outRecords.Reserve(flowCount);
 						
 						// Walk through the flowset in bytes.
-						unsigned int flowsetIt = 0;
 						while (flowsetIt + sizeof(NETFLOW9_FLOWSET_HEADER) < flowSetLength)
 						{
 							// Add a new entry in the flow storage.
@@ -574,6 +572,59 @@ void NetflowParser::ParseIPFIXPacket(const char* packet, const unsigned int leng
 	{
 		// Retrieve flows from the packet.
 		const PIPFIX_HEADER nfHeader = (PIPFIX_HEADER)packet;
+		
+		const unsigned long seqnum = ntohl(nfHeader->SequenceNumber);
+		const unsigned long timestamp = ntohl(nfHeader->ExportTimeStamp);
+
+		// Keep track of how many flows are in this packet.
+		unsigned int sequenceCounter = 0;
+
+		// Walk the packet flowsets, making sure it does not leave the bounds of the packet buffer.
+		unsigned int pktIt = sizeof(IPFIX_HEADER);
+		while (pktIt < length)
+		{
+			const PIPFIX_SET_HEADER pFlowSet = (PIPFIX_SET_HEADER)(packet + pktIt);
+			const unsigned short flowsetId = ntohs(pFlowSet->SetID);
+			const unsigned short flowSetLength = ntohs(pFlowSet->Length);
+			unsigned int flowsetIt = 0;
+			
+			// Is this a template flowset?
+			if (flowsetId == 2)
+			{
+				while (flowsetIt + sizeof(IPFIX_SET_HEADER) < flowSetLength)
+				{
+					const PIPFIX_TEMPLATE_HEADER templateHeader = (PIPFIX_TEMPLATE_HEADER)(packet + pktIt + flowsetIt + sizeof(IPFIX_SET_HEADER));
+					flowsetIt += sizeof(IPFIX_TEMPLATE_HEADER);
+					
+					// Find out how many fields are in this template record.
+					const unsigned short templateID = ntohs(templateHeader->TemplateID);
+					const unsigned short fieldCount = ntohs(templateHeader->FieldCount);
+				}
+			}
+			// If this an option template flowset?
+			else if (flowsetId == 3)
+			{
+				while (flowsetIt + sizeof(IPFIX_SET_HEADER) < flowSetLength)
+				{
+					const PIPFIX_OPTIONS_TEMPLATE_HEADER templateHeader = (PIPFIX_OPTIONS_TEMPLATE_HEADER)(packet + pktIt + flowsetIt + sizeof(IPFIX_SET_HEADER));
+					flowsetIt += sizeof(PIPFIX_OPTIONS_TEMPLATE_HEADER);
+					
+					// Find out how many fields are in this template record.
+					const unsigned short templateID = ntohs(templateHeader->TemplateID);
+					const unsigned short scopeFieldCount = ntohs(templateHeader->ScopeFieldCount);
+					const unsigned short fieldCount = ntohs(templateHeader->FieldCount);
+				}
+			}
+			// Is this a data flowset?
+			else if (flowsetId > 255)
+			{
+				
+			}
+			else
+			{
+				// not valid?
+			}
+		}
 	}
 }
 

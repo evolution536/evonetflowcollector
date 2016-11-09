@@ -65,6 +65,12 @@ typedef struct _IPFIX_OPTIONS_TEMPLATE_HEADER
 	IPFIX_INFORMATION_ELEMENT_HEADER Fields[1];
 } IPFIX_OPTIONS_TEMPLATE_HEADER, *PIPFIX_OPTIONS_TEMPLATE_HEADER;
 
+// IPFIX flow record header for code simplification.
+typedef struct _IPFIX_FLOW_RECORD
+{
+	unsigned char FieldValue[2];
+} IPFIX_FLOW_RECORD, *PIPFIX_FLOW_RECORD;
+
 // IPFIX field definitions.
 // Source: http://www.iana.org/assignments/ipfix/ipfix.xhtml
 #define octetDeltaCount							1
