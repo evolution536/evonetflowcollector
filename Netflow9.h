@@ -186,7 +186,7 @@ typedef struct _NETFLOW9_OPTIONS_TEMPLATE_HEADER
 
 // Netflow v9 parsing functions.
 const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER optionsHeader, const unsigned int length);
-const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader, const unsigned int length, VectorMap<unsigned short, unsigned short>& fields);
+const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader, const unsigned int length, Vector<TemplateFieldEntry>& fields);
 const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned short fieldLength, const void* fieldData, String& output);
 
 // Sampling algorithm definitions.

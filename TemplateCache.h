@@ -22,6 +22,8 @@
 
 using namespace Upp;
 
+#include "EvoNetflow.h"
+
 // Represents the type of template.
 enum TemplateType
 {
@@ -36,19 +38,7 @@ struct FlowTemplate : Moveable<FlowTemplate>
 	TemplateType Type;
 	
 	// The fields of this template.
-	VectorMap<unsigned short, unsigned short> FieldCache;
-	
-	// Retrieves the field type of a field in this template.
-	const unsigned short GetFieldType(const int index) const
-	{
-		return this->FieldCache.GetKey(index);
-	};
-	
-	// Retrieves the field size of a field in this template.
-	const unsigned short GetFieldSize(const int index) const
-	{
-		return this->FieldCache[index];
-	};
+	Vector<TemplateFieldEntry> FieldCache;
 };
 
 // Represents a key for the template cache container.
@@ -94,8 +84,9 @@ public:
 		return &instance;
 	};
 	
-	void AddTemplate(const unsigned short version, const unsigned short templateID, const TemplateType type, const VectorMap<unsigned short, unsigned short>& dataFields);
+	void AddTemplate(const unsigned short version, const unsigned short templateID, const TemplateType type, const Vector<TemplateFieldEntry>& dataFields);
 	const FlowTemplate* FindTemplate(const unsigned short version, const unsigned short templateID) const;
+	void CopyTemplateData(const FlowTemplate* const flowTemplate, FlowTemplate& outTemplate);
 };
 
 #endif

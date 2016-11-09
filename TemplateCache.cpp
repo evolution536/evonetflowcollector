@@ -30,7 +30,7 @@ TemplateCache::~TemplateCache()
 }
 
 // Attemps to add a template to the cache. If the template already exists, it is replaced.
-void TemplateCache::AddTemplate(const unsigned short version, const unsigned short templateID, const TemplateType type, const VectorMap<unsigned short, unsigned short>& dataFields)
+void TemplateCache::AddTemplate(const unsigned short version, const unsigned short templateID, const TemplateType type, const Vector<TemplateFieldEntry>& dataFields)
 {
 	// Construct the key.
 	TemplateCacheKey key;
@@ -76,4 +76,18 @@ const FlowTemplate* TemplateCache::FindTemplate(const unsigned short version, co
 	
 	// Not found!
 	return NULL;
+}
+
+// Copies a template to a template passed as parameter, to avoid race conditions.
+void TemplateCache::CopyTemplateData(const FlowTemplate* const flowTemplate, FlowTemplate& outTemplate)
+{
+	// One thread should be looking at templates at a time.
+	this->mTemplateCS.Enter();
+	
+	// Copy the template.
+	outTemplate.Type = flowTemplate->Type;
+	outTemplate.FieldCache.Append(flowTemplate->FieldCache);
+	
+	// Release the lock.
+	this->mTemplateCS.Leave();
 }

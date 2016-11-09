@@ -477,7 +477,8 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 					const unsigned short templateID = ntohs(templateHeader->TemplateID);
 					const unsigned short fieldCount = ntohs(templateHeader->FieldCount);
 
-					VectorMap<unsigned short, unsigned short> dataFields;
+					Vector<TemplateFieldEntry> dataFields;
+					dataFields.Reserve(fieldCount);
 					if (ParseNetflow9DataTemplate(templateHeader, length - pktIt, dataFields))
 					{
 						// Succeeded in parsing the template, now pass it to the template cache.
@@ -502,8 +503,12 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 					// Only continue parsing the flows in this packet if we actually have a template to do so.
 					if (flowTemplate)
 					{
+						// Make a copy of the fields, to enable another worker to replace the template if required.
+						FlowTemplate localTemplate;
+						GlobalTemplateCache->CopyTemplateData(flowTemplate, localTemplate);
+
 						// How many fields should there be in these flow records?
-						const unsigned short fieldCount = flowTemplate->FieldCache.GetCount();
+						const unsigned short fieldCount = localTemplate.FieldCache.GetCount();
 
 						// Output vector for the processed flows.
 						Vector<Netflow9Storage> outRecords;
@@ -523,21 +528,20 @@ void NetflowParser::ParseNetflow9Packet(const char* packet, const unsigned int l
 							{
 								// Try to parse the current field.
 								String output;
-								const unsigned short fieldType = flowTemplate->GetFieldType(i);
-								const unsigned short fieldLength = flowTemplate->GetFieldSize(i);
-								if (ParseNetflow9Field(fieldType, fieldLength, flowRecord->FieldValue, output))
+								const TemplateFieldEntry& thisField = localTemplate.FieldCache[i];
+								if (ParseNetflow9Field(thisField.FieldType, thisField.FieldLength, flowRecord->FieldValue, output))
 								{
 									// Succeeded in parsing, add the output to the flow storage.
 									// Another sanity check just to be sure we stay in the compile-time-defined bounds.
-									if (fieldType < sizeof(flow.FlowStorage))
+									if (thisField.FieldType < sizeof(flow.FlowStorage))
 									{
-										flow.FlowStorage[fieldType].FieldValue = output;
+										flow.FlowStorage[thisField.FieldType].FieldValue = output;
 									}
 								}
 								
 								// Increment the pointer to point to the next field.
-								flowsetIt += fieldLength;
-								flowRecord = (PNETFLOW9_DATA_FLOWSET_HEADER)((char*)flowRecord + fieldLength);
+								flowsetIt += thisField.FieldLength;
+								flowRecord = (PNETFLOW9_DATA_FLOWSET_HEADER)((char*)flowRecord + thisField.FieldLength);
 							}
 
 							// There could be a padding at the end of the flowset to align it to 32-bits.
@@ -599,6 +603,14 @@ void NetflowParser::ParseIPFIXPacket(const char* packet, const unsigned int leng
 					// Find out how many fields are in this template record.
 					const unsigned short templateID = ntohs(templateHeader->TemplateID);
 					const unsigned short fieldCount = ntohs(templateHeader->FieldCount);
+					
+					// Walk the fields in this template record.
+					for (int i = 0; i < fieldCount; ++i)
+					{
+						PIPFIX_INFORMATION_ELEMENT_HEADER elementHeader = (PIPFIX_INFORMATION_ELEMENT_HEADER)((char*)templateHeader + i * sizeof(IPFIX_INFORMATION_ELEMENT_HEADER));
+						
+						// Enterprise number of template?
+					}
 				}
 			}
 			// If this an option template flowset?

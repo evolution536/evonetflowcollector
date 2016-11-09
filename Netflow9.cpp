@@ -36,7 +36,7 @@ const bool ParseNetflow9OptionsTemplate(const PNETFLOW9_OPTIONS_TEMPLATE_HEADER 
 }
 
 // Parses a Netflow v9 data template.
-const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader, const unsigned int length, VectorMap<unsigned short, unsigned short>& fields)
+const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER templateHeader, const unsigned int length, Vector<TemplateFieldEntry>& fields)
 {
 	const unsigned short fieldCount = ntohs(templateHeader->FieldCount);
 
@@ -46,15 +46,15 @@ const bool ParseNetflow9DataTemplate(const PNETFLOW9_TEMPLATE_FLOWSET_HEADER tem
 		return false;
 	}
 	
-	// Reserve space for the fields.
-	fields.Reserve(fieldCount);
-	
 	// Iterate through all template field records.
 	PNETFLOW9_TEMPLATE_RECORD record = (PNETFLOW9_TEMPLATE_RECORD)((char*)templateHeader + sizeof(NETFLOW9_TEMPLATE_FLOWSET_HEADER));
 	for (int i = 0; i < fieldCount; ++i, ++record)
 	{
 		// Save the template record.
-		fields.Put(ntohs(record->FieldType), ntohs(record->FieldLength));
+		TemplateFieldEntry entry;
+		entry.FieldType = ntohs(record->FieldType);
+		entry.FieldLength = ntohs(record->FieldLength);
+		fields << entry;
 	}
 	
 	return true;
@@ -246,7 +246,8 @@ const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned sho
 			|| fieldType == MUL_DST_PKTS || fieldType == MUL_DST_BYTES || fieldType == OUT_BYTES
 			|| fieldType == OUT_PKTS || fieldType == SAMPLING_INTERVAL || fieldType == TOTAL_BYTES_EXP
 			|| fieldType == TOTAL_PKTS_EXP || fieldType == TOTAL_FLOWS_EXP || fieldType == FLOW_SAMPLER_RANDOM_INTERVAL
-			|| fieldType == IN_PERMANENT_BYTES || fieldType == IN_PERMANENT_PKTS || fieldType == FLOWS)
+			|| fieldType == IN_PERMANENT_BYTES || fieldType == IN_PERMANENT_PKTS || fieldType == FLOWS
+			|| fieldType == LAST_SWITCHED || fieldType == FIRST_SWITCHED)
 		{
 			// Just give numeric output.
 			output = IntStr(value);
@@ -258,12 +259,6 @@ const bool ParseNetflow9Field(const unsigned short fieldType, const unsigned sho
 		{
 			// Parse the data as an IPv4 address. (byte swapping should not be done here!)
 			output = Ipv4ToString(*(unsigned long*)fieldData);
-			return true;
-		}
-		else if (fieldType == LAST_SWITCHED || fieldType == FIRST_SWITCHED)
-		{
-			// The field value is a UNIX timestamp.
-			output = Format(TimeFromUTC(value));
 			return true;
 		}
 		else if (fieldType == INPUT_SNMP || fieldType == OUTPUT_SNMP)

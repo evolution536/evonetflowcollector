@@ -93,6 +93,7 @@ struct Netflow9Storage : Moveable<Netflow9Storage>
 	// Assignment operator here as well.
 	Netflow9Storage& operator=(const Netflow9Storage& other)
 	{
+		this->TimeStamp = other.TimeStamp;
 		this->FlowSequence = other.FlowSequence;
 		for (int i = 0; i < sizeof(this->FlowStorage) / sizeof(this->FlowStorage[0]); ++i)
 		{
@@ -106,7 +107,11 @@ struct Netflow9Storage : Moveable<Netflow9Storage>
 // Represents an IPFIX storage structure that includes the sequence number.
 struct IPFIXStorage : Moveable<IPFIXStorage>
 {
+	// The timestamp of the flow.
+	unsigned long TimeStamp;
 	
+	// The flow sequence number.
+	unsigned long FlowSequence;
 };
 
 // Keeps track of processed Netflow packets, ready for output.

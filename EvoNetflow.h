@@ -18,6 +18,10 @@
 #ifndef EVO_NETFLOW_H
 #define EVO_NETFLOW_H
 
+#include <Core/Core.h>
+
+using namespace Upp;
+
 // http://www.cisco.com/c/en/us/td/docs/net_mgmt/netflow_collection_engine/3-6/user/guide/format.html#wp1006108
 // https://www.plixer.com/support/netflow_v9.html
 
@@ -50,5 +54,15 @@ typedef struct _MACADDRESS
 	unsigned char FifthPart;
 	unsigned char SixthPart;
 } MACADDRESS, *PMACADDRESS;
+
+// Represents a field in a Netflow v9 or IPFIX template.
+struct TemplateFieldEntry : Moveable<TemplateFieldEntry>
+{
+	// The field type.
+	unsigned short FieldType;
+	
+	// The field length.
+	unsigned short FieldLength;
+};
 
 #endif
