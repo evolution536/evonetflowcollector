@@ -34,6 +34,7 @@ private:
 	String logfileArg;
 	bool debugModeArg;
 	unsigned int argumentCount;
+	bool testModeArg;
 	
 	void Parse(const Vector<String>& args);
 	const LoggingMethod ParseLoggingMethod(const String& str);
@@ -49,6 +50,7 @@ public:
 	const LoggingMethod GetLoggingMethod() const;
 	const String& GetLogFileArgument() const;
 	const unsigned short GetPortArgument() const;
+	const bool GetWasTestMode() const;
 };
 
 #endif

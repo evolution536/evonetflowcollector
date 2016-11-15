@@ -24,7 +24,8 @@ const String CommandLineArgumentParser::GetHelpOutput()
 	return "Example: EvoNetflowCollector -p 9995 -D\n\nUsage:\n\n?, -h, --help\t\t\tDisplays this help information.\n"\
 	"-p, --port <port>\t\tSets the UDP port to listen on. Must be greater than 0.\n-l, --logging <method>\t\t"\
 	"Method of logging. One of: file null\n-o, --outfile <file>\t\tSets the output file that Netflow will be written to.\n"\
-	"-D, --debug\t\t\tOutputs flows to stdout (Debugging purposes, logging method is optional).\n";
+	"-D, --debug\t\t\tOutputs flows to stdout (Debugging purposes, logging method is optional).\n"\
+	"-T, --test\t\t\tCollects flows in testing mode, not parsing and logging any flows.\n";
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -38,6 +39,7 @@ CommandLineArgumentParser::CommandLineArgumentParser(const Vector<String>& args)
 	this->debugModeArg = false;
 	this->argumentCount = args.GetCount();
 	this->methodArg = LOGGING_METHOD_UNDEFINED;
+	this->testModeArg = false;
 	
 	// Parse command line arguments.
 	this->Parse(args);
@@ -96,6 +98,10 @@ void CommandLineArgumentParser::Parse(const Vector<String>& args)
 		{
 			this->debugModeArg = true;
 		}
+		else if (args[i] == "-T" || args[i] == "--test")
+		{
+			this->testModeArg = true;
+		}
 	}
 }
 
@@ -135,4 +141,10 @@ const String& CommandLineArgumentParser::GetLogFileArgument() const
 const unsigned short CommandLineArgumentParser::GetPortArgument() const
 {
 	return this->portArg;
+}
+
+// Gets whether test mode was requested or not.
+const bool CommandLineArgumentParser::GetWasTestMode() const
+{
+	return this->testModeArg;
 }

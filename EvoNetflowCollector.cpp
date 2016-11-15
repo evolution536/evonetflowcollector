@@ -222,30 +222,40 @@ CONSOLE_APP_MAIN
 		Cout() << CommandLineArgumentParser::GetHelpOutput();
 		return;
 	}
-
-	// If any logging method was specified, initialize it.
-	if (cmdParser.GetLoggingMethod() == LOGGING_METHOD_FILE)
+	
+	// Was testing mode requested? If so, parsing and logging should be disabled.
+	if (cmdParser.GetWasTestMode())
 	{
-		if (cmdParser.GetLogFileArgument().IsEmpty())
+		Cout() << "Collector started in testing mode, parsing and logging disabled!\n";
+	}
+	
+	// In testing mode, logging is to be disabled.
+	if (!cmdParser.GetWasTestMode())
+	{
+		// If any logging method was specified, initialize it.
+		if (cmdParser.GetLoggingMethod() == LOGGING_METHOD_FILE)
 		{
-			// No filename was specified!
-			Cout() << "Please specify an output filename using the -o <filename> argument!\n";
-			return;
+			if (cmdParser.GetLogFileArgument().IsEmpty())
+			{
+				// No filename was specified!
+				Cout() << "Please specify an output filename using the -o <filename> argument!\n";
+				return;
+			}
+	
+			// Initialize file logger.
+			GlobalNetflowLogger = new NetflowFileLogger(cmdParser.GetLogFileArgument());
 		}
-
-		// Initialize file logger.
-		GlobalNetflowLogger = new NetflowFileLogger(cmdParser.GetLogFileArgument());
-	}
-	else if (cmdParser.GetLoggingMethod() == LOGGING_METHOD_NULL)
-	{
-		// Initialize null logger.
-		GlobalNetflowLogger = new NetflowNullLogger();
-	}
-
-	// Check if the logger was succesfully initialized.
-	if (GlobalNetflowLogger && !GlobalNetflowLogger->IsReady())
-	{
-		Cout() << "Failed to initialize the specified logger!\n";
+		else if (cmdParser.GetLoggingMethod() == LOGGING_METHOD_NULL)
+		{
+			// Initialize null logger.
+			GlobalNetflowLogger = new NetflowNullLogger();
+		}
+		
+		// Check if the logger was succesfully initialized.
+		if (GlobalNetflowLogger && !GlobalNetflowLogger->IsReady())
+		{
+			Cout() << "Failed to initialize the specified logger!\n";
+		}
 	}
 
 	// Set interrupt handler to catch Ctrl+C. We need to clean up stuff first if the user signals the program.
@@ -272,15 +282,19 @@ CONSOLE_APP_MAIN
 		return;
 	}
 
-	// Initialize the result container.
+	// Initialize the result container. Even in testing mode, we instantiate it for convinience.
 	GlobalResultContainer = NetflowResultContainer::GetInstance();
-	
-	// Initialize the template cache.
-	GlobalTemplateCache = TemplateCache::GetInstance();
-	
+
 	// Initialize the Netflow parser, and start the processing loop.
 	GlobalNetflowParser = new NetflowParser();
 	GlobalNetflowParser->StartParser();
+
+	// In testing mode, we don't need templates.
+	if (!cmdParser.GetWasTestMode())
+	{
+		// Initialize the template cache.
+		GlobalTemplateCache = TemplateCache::GetInstance();
+	}
 
 	// Report that we have started collecting.
 	Cout() << "Listening for input on port " << portArg << "...\n";

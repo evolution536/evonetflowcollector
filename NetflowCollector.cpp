@@ -140,10 +140,16 @@ const bool NetflowCollector::Bind(const unsigned short port)
 void NetflowCollector::SetSocketOptions()
 {
 	// Set a timeout on the socket so that it does not block execution infinitely.
+#ifdef _WIN32
 	unsigned long timeout = 25;
 	setsockopt(this->mSocket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(unsigned long));
+#else
+	struct timeval tv;
+	tv.tv_usec = 25000;
+	setsockopt(this->mSocket, SOL_SOCKET, SO_RCVTIMEO, (struct timeval*)&tv, sizeof(struct timeval));
+#endif
 
-	// Increase the receive buffer to avoid packets being dropped.
+	// Find out what the current receive buffer size is.
 	int p;
 	socklen_t optlen = sizeof(socklen_t);
 	getsockopt(this->mSocket, SOL_SOCKET, SO_RCVBUF, (char*)&p, &optlen);

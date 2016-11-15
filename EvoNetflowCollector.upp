@@ -1,4 +1,4 @@
-description "Netflow collection application for Netflow v5, v9 and IPFIX.\377";
+description "Netflow collection application for Netflow v1, v5, v7, v9 and IPFIX.\377";
 
 uses
 	Core;
