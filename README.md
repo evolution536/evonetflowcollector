@@ -1,25 +1,23 @@
-# New Version under construction
-
 # Evo Netflow Collector
 
-This is a command line Netflow collector application that collects and dumps Netflow traffic that is sent via UDP. Can dump Netflow to standard output or a file. More options are to come. Currently supports Netflow v5 and v9 and runs on Windows and Linux.
+This is a command line Netflow collector application that collects and dumps Netflow traffic that is sent via UDP. Can dump Netflow to standard output or a file. More options are to come. Currently supports Netflow v1, v5, v7, v9 and v10 (IPFIX) and runs on Windows and Linux.
 
-## Getting it to run on Windows
+The project was created with TheIDE, part of U++ (http://www.ultimatepp.org/). This development framework can be downloaded on Windows or Linux, and installed. The command-line builder UMK or the IDE itself can be used to build EvoNetflowCollector.
 
-The project was created in Windows using Visual Studio 2013. You can open the solution file in Windows, select *Release* compilation mode and build the project.
+## Getting it to run using UMK
 
-## Getting it to run on Linux
-
-It can be built on Linux using autoconf. Go to the *EvoNetflowCollector* subdirectory and execute the following commands.
+*EvoNetflowCollector* can be built in release mode with UMK by:
 
 ```
-autoreconf -vif
-./configure
-make
-make install
+umk MyApps EvoNetflowCollector GCC -r +MT,SSE2,NOI18N EvoNetflowCollector
 ```
 
-The default installation directory is */opt/evonetflowcollector*. It can be changed with:
+It can also be built in debug mode by:
+
 ```
-./configure --prefix=/<otherdir>
+umk MyApps EvoNetflowCollector GCC -d +MT,SSE2,NOI18N EvoNetflowCollector
 ```
+
+## Getting it to run using TheIDE
+
+In a graphical environment, TheIDE can be used to compile and debug EvoNetflowCollector. Follow the installation steps of the IDE, load the project and build it however you like it!
